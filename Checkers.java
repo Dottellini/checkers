@@ -1,27 +1,30 @@
-import java.util.*;
-
 class Game {
-    ArrayList<Checker> checkersList = new ArrayList<>();
-    int boardSize = 32;
+    int boardSize = 32; //8x8
+    int[] board = new int[boardSize];
 
     Game() {
         for(int i = 0; i < boardSize; i++) {
-            checkersList.add(new Checker());
+            board[i] = i < 12 ? 1 : (i > 19 ? 2 : 0);
         }
     }
-}
 
-class Checker {
-    int team;
-    boolean alive = true;
-    int pos;
-
-    Checker(int team, int pos) {
-        this.team = team;
-        this.pos = pos;
+    //move can be "0" or "1". 0 is a move left, 1 is a move right
+    void move(int piecePos, int move) {
+        
     }
-}
 
-class Dame extends Checker {
+    @Override
+    public String toString() {
+        String[] checkerSymbols = new String[]{"| |", "S", "K"};
+        String s = "";
 
+        for(int i = 0; i < 64; i++) {
+            if(i % 2 == 1) {
+                s += checkerSymbols[board[i]];
+            } else {
+                s += "| |";
+            }
+        }
+        return s;
+    }
 }
