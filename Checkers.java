@@ -8,10 +8,17 @@ enum Player {
 }
 
 enum Move {
-    LEFT,
-    RIGHT,
-    BACKLEFT,
-    BACKRIGHT
+    LEFT(4),
+    RIGHT(3),
+    BACKLEFT(-3),
+    BACKRIGHT(-4),
+    NONE(0);
+
+    public final int value;
+
+    private Move(int value) {
+        this.value = value;
+    }
 }
 
 class Game {
@@ -81,14 +88,25 @@ class Game {
         Checker piece = copy.findPiece(piecePos);
         Checker target = copy.findPiece(targetPos);
 
+        if(!piece.alive) return this; //cant move an empty field
         if(piece.player != this.player) throw new IllegalArgumentException("This is not your playing Piece");
+        if(!piece.canReach(target)) throw new IllegalArgumentException("Target cant be reached");
+        if(target.player == piece.player) return this; //The space is already occupied by a piece of the same player, so we just return the same game and dont Move
 
-        //Add logic for Dame
+        //TODO: Add logic for Dame
         if(piece.getClass() == Dame.class) {
 
         }
 
-        piece.canReach(target);
+        Move move = piece.retrieveMoveTo(target);
+        if(target.alive && target.player != piece.player) {
+            return copy.newAttack(piece, target, move);
+        }
+
+        //regular move without attacking etc.
+        target.become(piece);
+        piece.kill();
+        copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
 
         return copy;
     }
@@ -101,6 +119,13 @@ class Game {
         landingPiece.become(piece);
         target.kill();
         piece.kill();
+        return this;
+    }
+
+    Game newAttack(Checker piece, Checker target, Move move) {
+        //TODO: MAKE NEW ATTACK
+        //int moveDirection = piece.player == Player.ONE ? () : ();
+        //int landingPieceOffset = move == Move.LEFT || ? 9 : 7;
         return this;
     }
 
@@ -171,13 +196,31 @@ class Checker {
     }
 
     //Checks if target is in reach (1 row up or down)
-    //TODO: This only works for a move forward thus far!!!
     boolean canReach(Checker target) {
-        int offset = target.pos - this.pos;
         int rowNum = getRowModulo();
-        if(offset < 0) offset = -offset; 
-        if(rowNum != target.getRowModulo() && (offset == 4 + rowNum || offset == 3 + rowNum)) return true;
+        Move move = retrieveMoveTo(target);
+        if(rowNum != target.getRowModulo() && move != Move.NONE) return true;
         return false;
+    }
+
+    Move retrieveMoveTo(Checker target) {
+        int offset = target.pos - this.pos; 
+        int rowNum = getRowModulo();
+        if(this.player == Player.ONE) {
+            if(offset == Move.LEFT.value + rowNum) return Move.LEFT;
+            if(offset == Move.RIGHT.value + rowNum) return Move.RIGHT;
+            rowNum = rowNum == 1 ? 0 : 1;
+            if(offset == Move.BACKRIGHT.value - rowNum) return Move.BACKRIGHT;
+            if(offset == Move.BACKLEFT.value - rowNum) return Move.BACKLEFT;
+        } else if (this.player == Player.TWO) {
+            if(offset == -Move.BACKRIGHT.value + rowNum) return Move.BACKRIGHT;
+            if(offset == -Move.BACKLEFT.value + rowNum) return Move.BACKLEFT;
+            rowNum = rowNum == 1 ? 0 : 1;    
+            if(offset == -Move.LEFT.value - rowNum) return Move.LEFT;
+            if(offset == -Move.RIGHT.value - rowNum) return Move.RIGHT;
+        }
+
+        return Move.NONE;
     }
 
     private int getRowModulo() {
