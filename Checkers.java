@@ -9,7 +9,9 @@ enum Player {
 
 enum Move {
     LEFT,
-    RIGHT
+    RIGHT,
+    BACKLEFT,
+    BACKRIGHT
 }
 
 class Game {
@@ -37,12 +39,17 @@ class Game {
     Game move(int piecePos, Move move) throws IllegalArgumentException {
         assert !isGameOver() : "Game is over";
 
+        //TODO:
+        //Rückwärts angreifen
+        //Schlagzwang prüfen
+        //Dame einbauen -> unendlich weit springen, unendlich weit angreifen?
+
         Game copy = Game.of(this.checkersList);
         Checker piece = copy.findPiece(piecePos);
         if(piece.player != this.player) throw new IllegalArgumentException("This is not your playing Piece");
         if((piece.player == Player.ONE && piece.pos > 27 )||(piece.player == Player.TWO && piece.pos < 4)) throw new IllegalArgumentException("Player cant move outside of playing field vertically");
 
-        int moveDirection = piece.player == Player.ONE ? +1 : -1; //This determines the direction (up or down) the move is going (Dependant on who is playing)
+        int moveDirection = piece.player == Player.ONE ? (move == Move.RIGHT || move == Move.LEFT ? +1 : -1) : (move == Move.RIGHT || move == Move.LEFT ? -1 : +1); //This determines the direction (up or down) the move is going (Dependant on who is playing)
         int piecePosOffset = piece.targetPieceOffset(move, moveDirection); //This calculates the position of the Target Piece Offset to the current piece.
 
         Checker targetPiece = copy.findPiece(piece.pos + piecePosOffset);
@@ -64,6 +71,26 @@ class Game {
         copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
         return copy;
         
+    }
+
+    Game newMove(int piecePos, int targetPos) throws IllegalArgumentException {
+        assert !isGameOver() : "Game is over";
+        if(targetPos > 31 || targetPos < 0) throw new IllegalArgumentException("Player cant move outside of playing field vertically");
+
+        Game copy = Game.of(this.checkersList);
+        Checker piece = copy.findPiece(piecePos);
+        Checker target = copy.findPiece(targetPos);
+
+        if(piece.player != this.player) throw new IllegalArgumentException("This is not your playing Piece");
+
+        //Add logic for Dame
+        if(piece.getClass() == Dame.class) {
+
+        }
+
+        piece.canReach(target);
+
+        return copy;
     }
 
     Game attack(Checker piece, Checker target, Move move, int moveDirection) {
@@ -140,7 +167,21 @@ class Checker {
     int targetPieceOffset(Move move, int moveDirection) {
         //The first check looks if the move is going right or left and returns the necessary offset. The second check is necessary since we are moving diagonally and every second row, our 
         //move offsets are 5 and 4 instead of 4 and 3. Also we need to check for player since the boards "every secoond row" changes wether moving up or down
-        return ((move == Move.LEFT ? this.leftMoveOffset : this.rightMoveOffset) + ((this.pos / 4) % 2 == 1 ? (this.player == Player.ONE ? 1 : 0) : (this.player == Player.ONE ? 0 : 1))) * moveDirection;
+        return ((move == Move.LEFT ? this.leftMoveOffset : this.rightMoveOffset) + getRowModulo()) * moveDirection;
+    }
+
+    //Checks if target is in reach (1 row up or down)
+    //TODO: This only works for a move forward thus far!!!
+    boolean canReach(Checker target) {
+        int offset = target.pos - this.pos;
+        int rowNum = getRowModulo();
+        if(offset < 0) offset = -offset; 
+        if(rowNum != target.getRowModulo() && (offset == 4 + rowNum || offset == 3 + rowNum)) return true;
+        return false;
+    }
+
+    private int getRowModulo() {
+        return (this.pos/4) % 2;
     }
 
     @Override
@@ -149,8 +190,8 @@ class Checker {
     }
 }
 
-/*class Dame extends Checker {
-    Dame() {
-
+class Dame extends Checker {
+    Dame(Player player, int x, int y, int pos) {
+        super(player, x, y, pos);
     }
-}*/
+}
