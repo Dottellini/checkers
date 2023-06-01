@@ -8,16 +8,18 @@ enum Player {
 }
 
 enum Move {
-    LEFT(4),
-    RIGHT(3),
-    BACKLEFT(-3),
-    BACKRIGHT(-4),
-    NONE(0);
+    LEFT(4, 9),
+    RIGHT(3, 7),
+    BACKLEFT(-3, -7),
+    BACKRIGHT(-4, -9),
+    NONE(0, 0);
 
     public final int value;
+    public final int attack;
 
-    private Move(int value) {
+    private Move(int value, int attack) {
         this.value = value;
+        this.attack = attack;
     }
 }
 
@@ -99,6 +101,8 @@ class Game {
         }
 
         Move move = piece.retrieveMoveTo(target);
+        if(move == Move.NONE) throw new IllegalArgumentException("Target cant be reached");
+
         if(target.alive && target.player != piece.player) {
             return copy.newAttack(piece, target, move);
         }
@@ -124,8 +128,13 @@ class Game {
 
     Game newAttack(Checker piece, Checker target, Move move) {
         //TODO: MAKE NEW ATTACK
-        //int moveDirection = piece.player == Player.ONE ? () : ();
-        //int landingPieceOffset = move == Move.LEFT || ? 9 : 7;
+        int movementDirection = piece.player == Player.ONE ? 1 : -1;
+        int moveAttackValue = move.attack;
+        Checker landingChecker = findPiece(piece.pos + (movementDirection * moveAttackValue));
+        if(((landingChecker.pos / 4) % 2) != ((piece.pos / 4) % 2)) throw new IllegalArgumentException("Piece cant land behind attacked piece");
+        landingChecker.become(piece);
+        target.kill();
+        piece.kill();
         return this;
     }
 
