@@ -45,46 +45,14 @@ class Game {
         }
     }
 
-    Game move(int piecePos, Move move) throws IllegalArgumentException {
+    Game move(int piecePos, int targetPos) throws IllegalArgumentException {
         assert !isGameOver() : "Game is over";
+        if(targetPos > 31 || targetPos < 0) throw new IllegalArgumentException("Player cant move outside of playing field vertically");
 
         //TODO:
         //Rückwärts angreifen
         //Schlagzwang prüfen
         //Dame einbauen -> unendlich weit springen, unendlich weit angreifen?
-
-        Game copy = Game.of(this.checkersList);
-        Checker piece = copy.findPiece(piecePos);
-        if(piece.player != this.player) throw new IllegalArgumentException("This is not your playing Piece");
-        if((piece.player == Player.ONE && piece.pos > 27 )||(piece.player == Player.TWO && piece.pos < 4)) throw new IllegalArgumentException("Player cant move outside of playing field vertically");
-
-        int moveDirection = piece.player == Player.ONE ? (move == Move.RIGHT || move == Move.LEFT ? +1 : -1) : (move == Move.RIGHT || move == Move.LEFT ? -1 : +1); //This determines the direction (up or down) the move is going (Dependant on who is playing)
-        int piecePosOffset = piece.targetPieceOffset(move, moveDirection); //This calculates the position of the Target Piece Offset to the current piece.
-
-        Checker targetPiece = copy.findPiece(piece.pos + piecePosOffset);
-        if((targetPiece.pos / 4) % 2 == (piece.pos / 4) % 2) throw new IllegalArgumentException("Player cant move outside of playing field horizontally");
-
-        //Here we do the actual moving
-        //////////////////////////////
-        if(targetPiece.player == piece.player) return this; //The space is already occupied by a piece of the same player, so we just return the same game and dont Move
-        if(!piece.alive) return this; //cant move an empty field
-        
-        //The target is an enemy piece
-        if(targetPiece.alive && targetPiece.player != piece.player) {
-            return copy.attack(piece, targetPiece, move, moveDirection);
-        }
-
-        //regular move without attacking etc.
-        targetPiece.become(piece);
-        piece.kill();
-        copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
-        return copy;
-        
-    }
-
-    Game newMove(int piecePos, int targetPos) throws IllegalArgumentException {
-        assert !isGameOver() : "Game is over";
-        if(targetPos > 31 || targetPos < 0) throw new IllegalArgumentException("Player cant move outside of playing field vertically");
 
         Game copy = Game.of(this.checkersList);
         Checker piece = copy.findPiece(piecePos);
@@ -115,18 +83,7 @@ class Game {
         return copy;
     }
 
-    Game attack(Checker piece, Checker target, Move move, int moveDirection) {
-        if((piece.player == Player.ONE && piece.pos > 23)||(piece.player == Player.TWO && piece.pos < 8)) throw new IllegalArgumentException("Player cant attack outside of playing field vertically");
-        int piecePosOffset = (move == Move.LEFT ? 9 : 7) * moveDirection;
-        Checker landingPiece = findPiece(piece.pos + piecePosOffset);
-        if((landingPiece.pos / 4) % 2 != (piece.pos / 4) % 2) throw new IllegalArgumentException("Player cant move outside of playing field horizontally");
-        landingPiece.become(piece);
-        target.kill();
-        piece.kill();
-        return this;
-    }
-
-    Game newAttack(Checker piece, Checker target, Move move) {
+    Game attack(Checker piece, Checker target, Move move) {
         //TODO: MAKE NEW ATTACK
         int movementDirection = piece.player == Player.ONE ? 1 : -1;
         int moveAttackValue = move.attack;
