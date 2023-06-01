@@ -50,8 +50,7 @@ class Game {
         if(targetPos > 31 || targetPos < 0) throw new IllegalArgumentException("Player cant move outside of playing field vertically");
 
         //TODO:
-        //Rückwärts angreifen
-        //Schlagzwang prüfen
+        //Wenn man attack macht, ist targetPos gleich das Feld auf dem die Figur landet einbauen?
         //Dame einbauen -> unendlich weit springen, unendlich weit angreifen?
 
         Game copy = Game.of(this.checkersList);
@@ -72,7 +71,7 @@ class Game {
         if(move == Move.NONE) throw new IllegalArgumentException("Target cant be reached");
 
         if(target.alive && target.player != piece.player) {
-            return copy.newAttack(piece, target, move);
+            return copy.attack(piece, target, move);
         }
 
         //regular move without attacking etc.
@@ -84,7 +83,6 @@ class Game {
     }
 
     Game attack(Checker piece, Checker target, Move move) {
-        //TODO: MAKE NEW ATTACK
         int movementDirection = piece.player == Player.ONE ? 1 : -1;
         int moveAttackValue = move.attack;
         Checker landingChecker = findPiece(piece.pos + (movementDirection * moveAttackValue));
@@ -120,8 +118,13 @@ class Game {
         return Player.NONE;
     }
 
+    //TODO: Zugalgorithmus
+
+    List<
+
     @Override
     public String toString() {
+        System.out.println("Your turn: " + this.player);
         return checkersList.stream().sorted((a, b) -> a.pos - b.pos).map(Object::toString).collect(Collectors.joining("\n"));
     }
 }
@@ -159,6 +162,12 @@ class Checker {
         //The first check looks if the move is going right or left and returns the necessary offset. The second check is necessary since we are moving diagonally and every second row, our 
         //move offsets are 5 and 4 instead of 4 and 3. Also we need to check for player since the boards "every secoond row" changes wether moving up or down
         return ((move == Move.LEFT ? this.leftMoveOffset : this.rightMoveOffset) + getRowModulo()) * moveDirection;
+    }
+
+    List<Integer> possibleMoves(Game g) {
+        List<Integer> movePositions = new ArrayList<>();
+        //TODO: Possible Moves method for Zugalgorithmus
+        return movePositions;
     }
 
     //Checks if target is in reach (1 row up or down)
