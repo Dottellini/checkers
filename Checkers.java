@@ -1,10 +1,17 @@
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 enum Player {
-    ONE,
-    TWO,
-    NONE
+    ONE(0),
+    TWO(1),
+    NONE(2);
+
+    public final int value;
+
+    private Player(int value) {
+        this.value = value;
+    }
 }
 
 enum Move {
@@ -45,37 +52,51 @@ class Game {
         }
     }
 
-    Game move(int piecePos, int targetPos) throws IllegalArgumentException {
+    Game move(int piecePos, int movePos) {
         assert !isGameOver() : "Game is over";
-        if(targetPos > 31 || targetPos < 0) throw new IllegalArgumentException("Player cant move outside of playing field vertically");
+        if(movePos > 31 || movePos < 0) return this; //throw new IllegalArgumentException("Player cant move outside of playing field vertically");
 
         //TODO:
-        //Wenn man attack macht, ist targetPos gleich das Feld auf dem die Figur landet einbauen?
-        //Dame einbauen -> unendlich weit springen, unendlich weit angreifen?
+        //Dame einbauen -> unendlich weit springen, unendlich weit angreifen, aber muss direkt hinter Stein ziehen
 
         Game copy = Game.of(this.checkersList);
         Checker piece = copy.findPiece(piecePos);
-        Checker target = copy.findPiece(targetPos);
+        Checker movePiece = copy.findPiece(movePos);
 
         if(!piece.alive) return this; //cant move an empty field
-        if(piece.player != this.player) throw new IllegalArgumentException("This is not your playing Piece");
-        if(!piece.canReach(target)) throw new IllegalArgumentException("Target cant be reached");
-        if(target.player == piece.player) return this; //The space is already occupied by a piece of the same player, so we just return the same game and dont Move
+        if(piece.player != this.player) return this; //This is not your playing piece
+        if(movePiece.player == piece.player) return this; //The space is already occupied by a piece of the same player, so we just return the same game and dont Move
 
         //TODO: Add logic for Dame
         if(piece.getClass() == Dame.class) {
 
         }
 
-        Move move = piece.retrieveMoveTo(target);
-        if(move == Move.NONE) throw new IllegalArgumentException("Target cant be reached");
+        int offset = movePiece.pos - piece.pos;
+        Move move = piece.retrieveMoveTo(movePiece);
 
-        if(target.alive && target.player != piece.player) {
-            return copy.attack(piece, target, move);
+        //Attack by movePos being a jump over the target to be attacked
+        if(offset == move.attack || offset == -move.attack) {
+            int moveDirection = piece.player == Player.ONE ? 1 : -1;
+            Checker target = findPiece(piece.pos + moveDirection * (move.attack - move.value));
+            if(!piece.canReach(target)) return this; //throw new IllegalArgumentException("Target cant be reached");
+            
+            if(target.alive && target.player != piece.player) {
+                return copy.attack(piece, target, move);
+            }
+
+            return this;
+        }
+
+        if(!piece.canReach(movePiece)) return this; //throw new IllegalArgumentException("Target cant be reached");
+
+        if(movePiece.alive && movePiece.player != piece.player) {
+            return copy.attack(piece, movePiece, move);
         }
 
         //regular move without attacking etc.
-        target.become(piece);
+        if(move == Move.BACKLEFT || move == Move.BACKRIGHT) return this; //throw new IllegalArgumentException("Cant move Backwards");
+        movePiece.become(piece);
         piece.kill();
         copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
 
@@ -86,7 +107,7 @@ class Game {
         int movementDirection = piece.player == Player.ONE ? 1 : -1;
         int moveAttackValue = move.attack;
         Checker landingChecker = findPiece(piece.pos + (movementDirection * moveAttackValue));
-        if(((landingChecker.pos / 4) % 2) != ((piece.pos / 4) % 2)) throw new IllegalArgumentException("Piece cant land behind attacked piece");
+        if(((landingChecker.pos / 4) % 2) != ((piece.pos / 4) % 2)) return this; //throw new IllegalArgumentException("Piece cant land behind attacked piece");
         landingChecker.become(piece);
         target.kill();
         piece.kill();
@@ -120,12 +141,34 @@ class Game {
 
     //TODO: Zugalgorithmus
 
-    List<
+    @Override
+    public boolean equals(Object other) {
+        if(other == null) return false;
+        if(other == this) return true;
+        if(other.getClass() != getClass()) return false;
+        Game that = (Game)other;
+        return that.player == this.player && that.checkersList.equals(checkersList);
+    }
 
     @Override
     public String toString() {
         System.out.println("Your turn: " + this.player);
-        return checkersList.stream().sorted((a, b) -> a.pos - b.pos).map(Object::toString).collect(Collectors.joining("\n"));
+        //toString in Numbers
+        //return checkersList.stream().sorted((a, b) -> a.pos - b.pos).map(Object::toString).collect(Collectors.joining("\n"));
+
+        //toString as Playingfield
+        String s = "\n";
+        String[] pieces = new String[]{" O ", " + ", "   "};
+        
+        for(Checker c: checkersList) {
+            if(c.pos % 4 == 0) s += "\n";
+            if(c.y % 2 == 1) s+= " ■ ";
+            s += pieces[c.player.value];
+            if(c.y % 2 == 0) s+= " ■ ";
+        }
+
+
+        return s;
     }
 }
 
@@ -135,8 +178,6 @@ class Checker {
     int x;
     int y;
     int pos;
-    int leftMoveOffset = 4;
-    int rightMoveOffset = 3;
 
     Checker(Player player, int x, int y, int pos) {
         this.player = player;
@@ -158,15 +199,14 @@ class Checker {
         this.player = Player.NONE;
     }
 
-    int targetPieceOffset(Move move, int moveDirection) {
-        //The first check looks if the move is going right or left and returns the necessary offset. The second check is necessary since we are moving diagonally and every second row, our 
-        //move offsets are 5 and 4 instead of 4 and 3. Also we need to check for player since the boards "every secoond row" changes wether moving up or down
-        return ((move == Move.LEFT ? this.leftMoveOffset : this.rightMoveOffset) + getRowModulo()) * moveDirection;
-    }
-
     List<Integer> possibleMoves(Game g) {
-        List<Integer> movePositions = new ArrayList<>();
         //TODO: Possible Moves method for Zugalgorithmus
+        List<Integer> movePositions = new ArrayList<>();
+        if(player == Player.NONE) return movePositions;
+        for(Move m: Move.values()){
+            //Mit g.move(piecepos, targetpos (durch m)) jeden move ausprobieren und return vergleichen
+            g.findPiece(pos + m.value);
+        }
         return movePositions;
     }
 
@@ -182,17 +222,17 @@ class Checker {
         int offset = target.pos - this.pos; 
         int rowNum = getRowModulo();
         if(this.player == Player.ONE) {
-            if(offset == Move.LEFT.value + rowNum) return Move.LEFT;
-            if(offset == Move.RIGHT.value + rowNum) return Move.RIGHT;
+            if(offset == Move.LEFT.value + rowNum || offset == Move.LEFT.attack) return Move.LEFT;
+            if(offset == Move.RIGHT.value + rowNum || offset == Move.RIGHT.attack) return Move.RIGHT;
             rowNum = rowNum == 1 ? 0 : 1;
-            if(offset == Move.BACKRIGHT.value - rowNum) return Move.BACKRIGHT;
-            if(offset == Move.BACKLEFT.value - rowNum) return Move.BACKLEFT;
+            if(offset == Move.BACKRIGHT.value - rowNum || offset == Move.BACKRIGHT.attack) return Move.BACKRIGHT;
+            if(offset == Move.BACKLEFT.value - rowNum || offset == Move.BACKLEFT.attack) return Move.BACKLEFT;
         } else if (this.player == Player.TWO) {
-            if(offset == -Move.BACKRIGHT.value + rowNum) return Move.BACKRIGHT;
-            if(offset == -Move.BACKLEFT.value + rowNum) return Move.BACKLEFT;
+            if(offset == -Move.BACKRIGHT.value + rowNum || offset == -Move.BACKRIGHT.attack) return Move.BACKRIGHT;
+            if(offset == -Move.BACKLEFT.value + rowNum || offset == -Move.BACKLEFT.attack) return Move.BACKLEFT;
             rowNum = rowNum == 1 ? 0 : 1;    
-            if(offset == -Move.LEFT.value - rowNum) return Move.LEFT;
-            if(offset == -Move.RIGHT.value - rowNum) return Move.RIGHT;
+            if(offset == -Move.LEFT.value - rowNum || offset == -Move.LEFT.attack) return Move.LEFT;
+            if(offset == -Move.RIGHT.value - rowNum || offset == -Move.RIGHT.attack) return Move.RIGHT;
         }
 
         return Move.NONE;
@@ -200,6 +240,15 @@ class Checker {
 
     private int getRowModulo() {
         return (this.pos/4) % 2;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if(other == null) return false;
+        if(other == this) return true;
+        if(other.getClass() != getClass()) return false;
+        Checker that = (Checker)other;
+        return that.player == this.player && that.alive == alive && that.x == x && that.y == y && that.pos == pos;
     }
 
     @Override
@@ -213,3 +262,8 @@ class Dame extends Checker {
         super(player, x, y, pos);
     }
 }
+
+
+
+//TESTING
+
