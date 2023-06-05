@@ -80,9 +80,17 @@ class Game {
         //Attack by movePos being a jump over the target to be attacked
         if(offset == move.attack || offset == -move.attack) {
             int moveDirection = piece.player == Player.ONE ? 1 : -1;
-            Checker target = findPiece(piece.pos + moveDirection * (move.attack - move.value));
+            int offsetByRowNum = 0; //This is necessary for Backwards jump attacking
+            if(move == Move.BACKLEFT || move == Move.BACKRIGHT) {
+                if(player == Player.ONE) {
+                    offsetByRowNum = (piece.pos/4) % 2;
+                }
+                if(player == Player.TWO) {
+                    offsetByRowNum = (piece.pos/4) % 2 == 0 ? -1 : 0;
+                }
+            }
+            Checker target = copy.findPiece(piece.pos + moveDirection * (move.attack - move.value) + offsetByRowNum);
             if(!piece.canReach(target)) return this; //throw new IllegalArgumentException("Target cant be reached");
-            
             if(target.alive && target.player != piece.player) {
                 return copy.attack(piece, target, move);
             }
@@ -154,12 +162,11 @@ class Game {
 
     @Override
     public String toString() {
-        System.out.println("Your turn: " + this.player);
         //toString in Numbers
         //return checkersList.stream().sorted((a, b) -> a.pos - b.pos).map(Object::toString).collect(Collectors.joining("\n"));
 
         //toString as Playingfield
-        String s = "\n";
+        String s = "Your turn: " + this.player + "\n";
         String[] pieces = new String[]{" O ", " + ", "   "};
         
         for(Checker c: checkersList) {
@@ -236,7 +243,6 @@ class Checker {
     }
 
     //Return Move that is required to get to target
-    //TODO: rowNum verbessern?
     Move retrieveMoveTo(Checker target) {
         int offset = target.pos - this.pos; 
         int rowNum = getRowModulo();
@@ -290,5 +296,38 @@ class Dame extends Checker {
 
 
 
-//TODO: TESTING
+//TESTING
 
+Game g = new Game();
+//Regular Move Player 1
+assert g.move(10, 13).findPiece(13).player == Player.ONE && g.move(10, 13).findPiece(10).player == Player.NONE : "Regular Move Player 1";
+//Regular Move Player 2
+assert g.move(10, 13).move(21, 17).findPiece(17).player == Player.TWO && g.move(10, 13).move(21, 17).findPiece(21).player == Player.NONE : "Regular Move Player 2";
+//Backwards Move Player 1
+assert g.move(10, 13).move(13, 10).equals(g.move(10, 13)) : "Backwards Move Player 1";
+//Backwards Move Player 2
+assert g.move(10, 13).move(21, 17).move(11, 15).move(17, 21).equals(g.move(10, 13).move(21, 17).move(11, 15)) : "Backwards Move Player 2";
+//Attack Player 1
+Game c = g.move(10, 13).move(22, 18).move(13, 18);
+assert !c.findPiece(18).alive && c.findPiece(22).player == Player.ONE : "Attack Player 1";
+//Attack Player 2
+c = g.move(10, 13).move(21, 17).move(11, 15).move(17, 13);
+assert !c.findPiece(13).alive && c.findPiece(10).player == Player.TWO : "Attack Player 2";
+//Jump Attack Player 1
+c = g.move(10, 13).move(22, 18).move(13, 22);
+assert !c.findPiece(18).alive && c.findPiece(22).player == Player.ONE : "Jump Attack Player 1";
+//Jump Attack Player 2
+c = g.move(10, 13).move(21, 17).move(11, 15).move(17, 10);
+assert !c.findPiece(13).alive && c.findPiece(10).player == Player.TWO : "Jump Attack Player 2";
+//Backwards Attack Player 1
+c = g.move(10, 13).move(21, 18).move(13, 17).move(22, 19).move(17, 21).move(19, 15).move(21, 18);
+assert !c.findPiece(18).alive && c.findPiece(14).player == Player.ONE : "Backwards Attack Player 1";
+//Backwards Attack Player 2
+c = g.move(10, 13).move(21, 18).move(11, 15).move(18, 14).move(8, 12).move(14, 10).move(12, 16).move(10, 13);
+assert !c.findPiece(13).alive && c.findPiece(17).player == Player.TWO : "Backwards Attack Player 2";
+//Backwards Jump Attack Player 1
+c = g.move(10, 13).move(21, 18).move(13, 17).move(22, 19).move(17, 21).move(19, 15).move(21, 14);
+assert !c.findPiece(18).alive && c.findPiece(14).player == Player.ONE : "Backwards Jump Attack Player 1";
+//Backwards Jump Attack Player 2
+c = g.move(10, 13).move(21, 18).move(11, 15).move(18, 14).move(8, 12).move(14, 10).move(12, 16).move(10, 17);
+assert !c.findPiece(13).alive && c.findPiece(17).player == Player.TWO : "Backwards Jump Attack Player 2";
