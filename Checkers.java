@@ -218,10 +218,7 @@ class Checker {
                 if(m == Move.LEFT || m == Move.RIGHT) moveValue = -m.value - (rowNum == 0 ? 1 : 0);
                 if(m == Move.BACKLEFT || m == Move.BACKRIGHT) moveValue = -m.value + rowNum;
             }
-            
             Game copy = g.move(pos, pos + moveValue);
-            
-            System.out.println(g);
             if(!copy.equals(g)) {
                 movePositions.add(pos + m.value);
             }
@@ -293,5 +290,5 @@ class Dame extends Checker {
 
 
 
-//TESTING
+//TODO: TESTING
 
