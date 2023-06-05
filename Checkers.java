@@ -1,6 +1,4 @@
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 enum Player {
     ONE(0),
@@ -40,7 +38,11 @@ class Game {
     }
 
     private Game(List<Checker> checkersList) {
-        this.checkersList = checkersList;
+        List<Checker> copyList = new ArrayList<>();
+        for(Checker c: checkersList) {
+            copyList.add(c.clone());
+        }
+        this.checkersList = copyList;
     }
 
     Game() {
@@ -199,14 +201,32 @@ class Checker {
         this.player = Player.NONE;
     }
 
+    //Returns a List of possible Moves of this piece in Game g
     List<Integer> possibleMoves(Game g) {
-        //TODO: Possible Moves method for Zugalgorithmus
+        if(g.player != player) throw new IllegalArgumentException("Not your turn");
         List<Integer> movePositions = new ArrayList<>();
         if(player == Player.NONE) return movePositions;
+        int rowNum = getRowModulo();
+
         for(Move m: Move.values()){
-            //Mit g.move(piecepos, targetpos (durch m)) jeden move ausprobieren und return vergleichen
-            g.findPiece(pos + m.value);
+            int moveValue = 0;
+            if(player == Player.ONE) {
+                if(m == Move.LEFT || m == Move.RIGHT) moveValue = m.value + rowNum;
+                if(m == Move.BACKLEFT || m == Move.BACKRIGHT) moveValue = m.value - (rowNum == 0 ? 1 : 0);
+            }
+            if(player == Player.TWO) {
+                if(m == Move.LEFT || m == Move.RIGHT) moveValue = -m.value - (rowNum == 0 ? 1 : 0);
+                if(m == Move.BACKLEFT || m == Move.BACKRIGHT) moveValue = -m.value + rowNum;
+            }
+            
+            Game copy = g.move(pos, pos + moveValue);
+            
+            System.out.println(g);
+            if(!copy.equals(g)) {
+                movePositions.add(pos + m.value);
+            }
         }
+
         return movePositions;
     }
 
@@ -218,6 +238,8 @@ class Checker {
         return false;
     }
 
+    //Return Move that is required to get to target
+    //TODO: rowNum verbessern?
     Move retrieveMoveTo(Checker target) {
         int offset = target.pos - this.pos; 
         int rowNum = getRowModulo();
@@ -238,8 +260,14 @@ class Checker {
         return Move.NONE;
     }
 
+    //Return the Row Modulo number (even or odd row)
     private int getRowModulo() {
         return (this.pos/4) % 2;
+    }
+
+    public Checker clone() {
+        Checker c = new Checker(this.player, this.x, this.y, this.pos);
+        return c;
     }
 
     @Override
