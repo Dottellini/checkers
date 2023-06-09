@@ -1,4 +1,5 @@
 import java.util.*;
+import java.util.stream.Collectors;
 
 enum Player {
     ONE(0),
@@ -122,6 +123,13 @@ class Game {
         target.kill();
         piece.kill();
         return this;
+    }
+
+    Checker findPiece(int x, int y) {
+        assert x >= 0 && x < 4 && y >= 0 && y < 8;
+        Optional<Checker> pieceOptional = checkersList.stream().filter(c -> c.x == x && c.y == y).findFirst();
+        if(!pieceOptional.isPresent()) throw new IllegalArgumentException("No piece found");
+        return pieceOptional.get();
     }
 
     Checker findPiece(int pos) {
@@ -292,6 +300,48 @@ class Dame extends Checker {
     Dame(Player player, int x, int y, int pos) {
         super(player, x, y, pos);
     }
+
+    //PoossibleMoves
+        //While loop mit xy values machen -> Geht so nicht, weil diagonal nicht immer gleich x+1 und y+1. X Wert kann auch gleich bleiben (siehe spielbrett)
+    //canReach
+    boolean canReach(Checker target, Game g) {
+        int xOffset = target.x - x;
+        int yOffset = target.y - y;
+
+        int xDirection = xOffset < 0 ? -1 : 1;
+        int yDirection = yOffset < 0 ? -1 : 1;
+
+        //Not diagonal, illegal move
+        if(xOffset * xDirection != yOffset * yDirection) return false; //Multiplying my their direction makes the values always positive
+
+        //Check if move goes out of board
+        if(xDirection == -1) {
+            if(x - xOffset < 0) return false;
+        }
+        if(xDirection == 1) {
+            if(x + xOffset > 3) return false;
+        }
+        if(yDirection == -1) {
+            if(y + yOffset < 0) return false;
+        }
+        if(yDirection == -1) {
+            if(y + yOffset > 7) return false;
+        }
+
+        int xTesterVar = this.x + 1 * xDirection;
+        int yTesterVar = this.y + 1 * yDirection;
+
+        while(xTesterVar < target.x + xOffset * xDirection || yTesterVar < target.y + yOffset * yDirection) {
+            if(g.findPiece(xTesterVar, yTesterVar).player != Player.NONE) break;
+            xTesterVar += 1 * xDirection;
+            yTesterVar += 1 * yDirection;
+        }
+        
+        Move move = retrieveMoveTo(target);
+        if(move != Move.NONE) return true;
+        return false;
+    }
+    //retrieveMoveTo
 }
 
 
@@ -331,3 +381,12 @@ assert !c.findPiece(18).alive && c.findPiece(14).player == Player.ONE : "Backwar
 //Backwards Jump Attack Player 2
 c = g.move(10, 13).move(21, 18).move(11, 15).move(18, 14).move(8, 12).move(14, 10).move(12, 16).move(10, 17);
 assert !c.findPiece(13).alive && c.findPiece(17).player == Player.TWO : "Backwards Jump Attack Player 2";
+//Illegal move: Cant Reach
+assert g.move(10, 20).equals(g) : "Illegal move: Cant Reach";
+//Illegal move: No free space
+assert g.move(10, 6).equals(g) : "Illegal move: No free space";
+//Illegal move: Move outside horizontally
+assert g.move(8, 11).equals(g) : "Illegal move: Move outside horizontally";
+//Illegal move: Move outside vertically
+assert g.move(1, -1).equals(g) : "Illegal move: Move outside vertically";
+assert g.move(30, 32).equals(g) : "Illegal move: Move outside vertically";
