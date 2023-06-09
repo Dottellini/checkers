@@ -272,7 +272,7 @@ class Checker {
     }
 
     //Return the Row Modulo number (even or odd row)
-    private int getRowModulo() {
+    int getRowModulo() {
         return (this.pos/4) % 2;
     }
 
@@ -305,14 +305,38 @@ class Dame extends Checker {
         //While loop mit xy values machen -> Geht so nicht, weil diagonal nicht immer gleich x+1 und y+1. X Wert kann auch gleich bleiben (siehe spielbrett)
     //canReach
     boolean canReach(Checker target, Game g) {
+        if(player == Player.NONE) return false; //empty field cant Move
+        if(this.equals(target)) return false;
+
+        int rowNum = getRowModulo();
         int xOffset = target.x - x;
         int yOffset = target.y - y;
 
         int xDirection = xOffset < 0 ? -1 : 1;
         int yDirection = yOffset < 0 ? -1 : 1;
 
-        //Not diagonal, illegal move
-        if(xOffset * xDirection != yOffset * yDirection) return false; //Multiplying my their direction makes the values always positive
+        // If you only move 1 place, the xOffset may be 0. So to calc if it is a left or right move, we do the following
+        //This compares the pos offset and looks if its an even or odd move and compares it to the Modulo of the Row
+        if(xOffset == 0) {
+            xDirection = (target.pos - this.pos) % 2 == rowNum ? 1 : -1;
+        }
+
+        //Calculate the MoveDirection
+        Move moveDir = Move.NONE;
+        if(xDirection > 0 && yDirection > 0) {
+            moveDir = player == Player.ONE ? Move.LEFT : Move.BACKRIGHT;
+        }
+        if(xDirection < 0 && yDirection > 0) {
+            moveDir = player == Player.ONE ? Move.RIGHT : Move.BACKLEFT;
+        }
+        if(xDirection > 0 && yDirection < 0) {
+            moveDir = player == Player.ONE ? Move.BACKLEFT : Move.RIGHT;
+        }
+        if(xDirection < 0 && yDirection < 0) {
+            moveDir = player == Player.ONE ? Move.BACKRIGHT : Move.LEFT;
+        }
+
+        if(moveDir == Move.NONE) return false; //If no move found, there was something wrong
 
         //Check if move goes out of board
         if(xDirection == -1) {
@@ -328,8 +352,9 @@ class Dame extends Checker {
             if(y + yOffset > 7) return false;
         }
 
-        int xTesterVar = this.x + 1 * xDirection;
+        int xTesterVar = 0; // X Value of next Piece in direction to target piece
         int yTesterVar = this.y + 1 * yDirection;
+
 
         while(xTesterVar < target.x + xOffset * xDirection || yTesterVar < target.y + yOffset * yDirection) {
             if(g.findPiece(xTesterVar, yTesterVar).player != Player.NONE) break;
