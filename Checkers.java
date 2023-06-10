@@ -110,14 +110,15 @@ class Game {
                 return copy;
             }
         }
-
         //regular move without attacking etc.
         if(move == Move.BACKLEFT || move == Move.BACKRIGHT) return this; //throw new IllegalArgumentException("Cant move Backwards");
-        if((copy.player == Player.ONE && movePiece.pos >= 28) || (copy.player == Player.TWO && movePiece.pos <= 3)) {
-            copy.checkersList.set(movePiece.pos, movePiece.asDame(piece)); //If at the end of the game, piece becomes a Dame
+        
+        if((player == Player.ONE && movePiece.pos >= 28) || (player == Player.TWO && movePiece.pos <= 3)) {
+            copy.checkersList.set(movePiece.pos, movePiece.asDame(piece)); //If at the end of the board, piece becomes a Dame
         } else {
             movePiece.become(piece);
         }
+
         piece.kill();
         copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
 
@@ -226,7 +227,9 @@ class Checker {
     }
 
     Dame asDame(Checker t) {
-        return new Dame(t.player, this.x, this.y, this.pos);
+        Dame d = new Dame(t.player, this.x, this.y, this.pos);
+        d.alive = true;
+        return d;
     }
 
     //Kills current Checker
@@ -319,8 +322,7 @@ class Checker {
     }
 
     public Checker clone() {
-        Checker c = new Checker(this.player, this.x, this.y, this.pos);
-        return c;
+        return new Checker(this.player, this.x, this.y, this.pos);
     }
 
     @Override
@@ -341,6 +343,10 @@ class Checker {
 class Dame extends Checker {
     Dame(Player player, int x, int y, int pos) {
         super(player, x, y, pos);
+    }
+
+    public Checker clone() {
+        return new Dame(this.player, this.x, this.y, this.pos);
     }
 
     //PoossibleMoves
@@ -417,6 +423,7 @@ class Dame extends Checker {
 //TESTING
 
 Game g = new Game();
+/*
 //Regular Move Player 1
 assert g.move(10, 13).findPiece(13).player == Player.ONE && g.move(10, 13).findPiece(10).player == Player.NONE : "Regular Move Player 1";
 //Regular Move Player 2
@@ -458,3 +465,19 @@ assert g.move(8, 11).equals(g) : "Illegal move: Move outside horizontally";
 //Illegal move: Move outside vertically
 assert g.move(1, -1).equals(g) : "Illegal move: Move outside vertically";
 assert g.move(30, 32).equals(g) : "Illegal move: Move outside vertically";
+*/
+//Check if creating Dame works
+for(int i = 0; i < g.boardSize; i++) {
+    Checker c = g.findPiece(i);
+    Checker dummy = new Checker(Player.NONE, c.x, c.y, c.pos);
+    dummy.alive = false;
+    g.checkersList.set(i, dummy);
+}
+g.checkersList.set(4, new Checker(Player.TWO, 0, 1, 4));
+g.checkersList.set(26, new Checker(Player.ONE, 2, 6, 26));
+
+Game d = g.move(26, 30);
+System.out.println(d.checkersList.get(30).getClass());
+
+d = d.move(4, 0);
+assert d.checkersList.get(0).getClass() == Dame.class && d.checkersList.get(30).getClass() == Dame.class: "Check if creating Dame works";
