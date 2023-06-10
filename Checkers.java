@@ -128,7 +128,6 @@ class Game {
     }
 
     Checker findPiece(int x, int y) {
-        System.out.println(x + " " + y);
         assert x >= 0 && x < 4 && y >= 0 && y < 8;
         Optional<Checker> pieceOptional = checkersList.stream().filter(c -> c.x == x && c.y == y).findFirst();
         if(!pieceOptional.isPresent()) throw new IllegalArgumentException("No piece found");
@@ -355,8 +354,6 @@ class Dame extends Checker {
         int yCurrent = this.y; // Y Value of next Piece in direction to target piece
 
         Checker currentChecker = g.findPiece(xCurrent, yCurrent);
-
-        System.out.println(moveDir);
 
         while(!currentChecker.equals(target)) {
             if(moveDir == Move.LEFT && player == Player.ONE || moveDir == Move.BACKRIGHT && player == Player.TWO) {
