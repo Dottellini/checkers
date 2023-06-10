@@ -345,7 +345,7 @@ class Dame extends Checker {
         super(player, x, y, pos);
     }
 
-    public Checker clone() {
+    public Dame clone() {
         return new Dame(this.player, this.x, this.y, this.pos);
     }
 
