@@ -1,8 +1,6 @@
 import java.util.*;
 import java.util.stream.Collectors;
 
-import javax.xml.crypto.XMLStructure;
-
 enum Player {
     ONE(0),
     TWO(1),
