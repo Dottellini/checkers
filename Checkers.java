@@ -423,7 +423,7 @@ class Dame extends Checker {
 //TESTING
 
 Game g = new Game();
-/*
+
 //Regular Move Player 1
 assert g.move(10, 13).findPiece(13).player == Player.ONE && g.move(10, 13).findPiece(10).player == Player.NONE : "Regular Move Player 1";
 //Regular Move Player 2
@@ -465,7 +465,7 @@ assert g.move(8, 11).equals(g) : "Illegal move: Move outside horizontally";
 //Illegal move: Move outside vertically
 assert g.move(1, -1).equals(g) : "Illegal move: Move outside vertically";
 assert g.move(30, 32).equals(g) : "Illegal move: Move outside vertically";
-*/
+
 //Check if creating Dame works
 for(int i = 0; i < g.boardSize; i++) {
     Checker c = g.findPiece(i);
@@ -477,7 +477,6 @@ g.checkersList.set(4, new Checker(Player.TWO, 0, 1, 4));
 g.checkersList.set(26, new Checker(Player.ONE, 2, 6, 26));
 
 Game d = g.move(26, 30);
-System.out.println(d.checkersList.get(30).getClass());
 
 d = d.move(4, 0);
 assert d.checkersList.get(0).getClass() == Dame.class && d.checkersList.get(30).getClass() == Dame.class: "Check if creating Dame works";
