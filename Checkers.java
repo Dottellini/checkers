@@ -61,9 +61,6 @@ class Game {
         assert !isGameOver() : "Game is over";
         if(movePos > 31 || movePos < 0) return this; //throw new IllegalArgumentException("Player cant move outside of playing field vertically");
 
-        //TODO:
-        //Dame einbauen -> unendlich weit springen, unendlich weit angreifen, aber muss direkt hinter Stein ziehen
-
         Game copy = Game.of(this.checkersList);
         Checker piece = copy.findPiece(piecePos);
         Checker movePiece = copy.findPiece(movePos);
@@ -72,14 +69,11 @@ class Game {
         if(piece.player != this.player) return this; //This is not your playing piece
         if(movePiece.player == piece.player) return this; //The space is already occupied by a piece of the same player, so we just return the same game and dont Move
 
-        //TODO: Add logic for Dame
-        if(piece.getClass() == Dame.class) {
-
-        }
-
         int offset = movePiece.pos - piece.pos;
         Move move = piece.retrieveMoveTo(movePiece);
 
+        //Attack logic that works for normal and Dame piece
+        //////////////////////
         //Attack by movePos being a jump over the target to be attacked
         if(offset == move.attack || offset == -move.attack) {
             int moveDirection = piece.player == Player.ONE ? 1 : -1;
@@ -105,6 +99,16 @@ class Game {
 
         if(movePiece.alive && movePiece.player != piece.player) {
             return copy.attack(piece, movePiece, move);
+        }
+        //////////////////////////
+
+        if(piece.getClass() == Dame.class) {
+            if(piece.canReach(movePiece) && !movePiece.alive && movePiece.player == Player.NONE) {
+                copy.checkersList.set(movePiece.pos, movePiece.asDame(piece)); //TODO: Check if this works lmao
+                piece.kill();
+                copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
+                return copy;
+            }
         }
 
         //regular move without attacking etc.
@@ -177,12 +181,13 @@ class Game {
 
         //toString as Playingfield
         String s = "Your turn: " + this.player + "\n";
-        String[] pieces = new String[]{" O ", " + ", "   "};
+        String[] pieces = new String[]{" O ", " + ", "   ", " D "};
         
         for(Checker c: checkersList) {
             if(c.pos % 4 == 0) s += "\n";
             if(c.y % 2 == 1) s+= " ■ ";
-            s += pieces[c.player.value];
+            if(c.getClass() == Dame.class) s += pieces[3];
+            else s += pieces[c.player.value];
             if(c.y % 2 == 0) s+= " ■ ";
         }
 
@@ -210,6 +215,10 @@ class Checker {
     void become(Checker target) {
         this.player = target.player;
         this.alive = target.alive;
+    }
+
+    Dame asDame(Checker t) {
+        return new Dame(t.player, this.x, this.y, this.pos);
     }
 
     //Kills current Checker
