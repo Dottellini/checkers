@@ -1,6 +1,8 @@
 import java.util.*;
 import java.util.stream.Collectors;
 
+import javax.xml.crypto.XMLStructure;
+
 enum Player {
     ONE(0),
     TWO(1),
@@ -126,6 +128,7 @@ class Game {
     }
 
     Checker findPiece(int x, int y) {
+        System.out.println(x + " " + y);
         assert x >= 0 && x < 4 && y >= 0 && y < 8;
         Optional<Checker> pieceOptional = checkersList.stream().filter(c -> c.x == x && c.y == y).findFirst();
         if(!pieceOptional.isPresent()) throw new IllegalArgumentException("No piece found");
@@ -250,7 +253,8 @@ class Checker {
         return false;
     }
 
-    //Return Move that is required to get to target
+    //TODO: Mit der unteren methode ersetzen?
+    //Return Move that is required to get to target (Only works if the target is 1 row away)
     Move retrieveMoveTo(Checker target) {
         int offset = target.pos - this.pos; 
         int rowNum = getRowModulo();
@@ -269,6 +273,28 @@ class Checker {
         }
 
         return Move.NONE;
+    }
+
+    //retrieveMoveTo using the x, y coordinates (works for any amount of rows)
+    Move retrieveMoveTo(Checker target, int xOffset, int xDirection, int yDirection) {
+        int rowNum = getRowModulo();
+
+        //Calculate the MoveDirection
+        Move moveDir = Move.NONE;
+        if(xDirection > 0 && yDirection > 0) {
+            moveDir = player == Player.ONE ? Move.LEFT : Move.BACKRIGHT;
+        }
+        if(xDirection < 0 && yDirection > 0) {
+            moveDir = player == Player.ONE ? Move.RIGHT : Move.BACKLEFT;
+        }
+        if(xDirection > 0 && yDirection < 0) {
+            moveDir = player == Player.ONE ? Move.BACKLEFT : Move.RIGHT;
+        }
+        if(xDirection < 0 && yDirection < 0) {
+            moveDir = player == Player.ONE ? Move.BACKRIGHT : Move.LEFT;
+        }
+
+        return moveDir;
     }
 
     //Return the Row Modulo number (even or odd row)
@@ -303,7 +329,8 @@ class Dame extends Checker {
 
     //PoossibleMoves
         //While loop mit xy values machen -> Geht so nicht, weil diagonal nicht immer gleich x+1 und y+1. X Wert kann auch gleich bleiben (siehe spielbrett)
-    //canReach
+    
+    //checks if there is a piece in the way from the current one to the target
     boolean canReach(Checker target, Game g) {
         if(player == Player.NONE) return false; //empty field cant Move
         if(this.equals(target)) return false;
@@ -315,59 +342,51 @@ class Dame extends Checker {
         int xDirection = xOffset < 0 ? -1 : 1;
         int yDirection = yOffset < 0 ? -1 : 1;
 
-        // If you only move 1 place, the xOffset may be 0. So to calc if it is a left or right move, we do the following
-        //This compares the pos offset and looks if its an even or odd move and compares it to the Modulo of the Row
         if(xOffset == 0) {
             xDirection = (target.pos - this.pos) % 2 == rowNum ? 1 : -1;
         }
 
         //Calculate the MoveDirection
-        Move moveDir = Move.NONE;
-        if(xDirection > 0 && yDirection > 0) {
-            moveDir = player == Player.ONE ? Move.LEFT : Move.BACKRIGHT;
-        }
-        if(xDirection < 0 && yDirection > 0) {
-            moveDir = player == Player.ONE ? Move.RIGHT : Move.BACKLEFT;
-        }
-        if(xDirection > 0 && yDirection < 0) {
-            moveDir = player == Player.ONE ? Move.BACKLEFT : Move.RIGHT;
-        }
-        if(xDirection < 0 && yDirection < 0) {
-            moveDir = player == Player.ONE ? Move.BACKRIGHT : Move.LEFT;
-        }
+        Move moveDir = retrieveMoveTo(target, xOffset, xDirection, yDirection);
 
         if(moveDir == Move.NONE) return false; //If no move found, there was something wrong
 
-        //Check if move goes out of board
-        if(xDirection == -1) {
-            if(x - xOffset < 0) return false;
-        }
-        if(xDirection == 1) {
-            if(x + xOffset > 3) return false;
-        }
-        if(yDirection == -1) {
-            if(y + yOffset < 0) return false;
-        }
-        if(yDirection == -1) {
-            if(y + yOffset > 7) return false;
+        int xCurrent = this.x; // X Value of next Piece in direction to target piece
+        int yCurrent = this.y; // Y Value of next Piece in direction to target piece
+
+        Checker currentChecker = g.findPiece(xCurrent, yCurrent);
+
+        System.out.println(moveDir);
+
+        while(!currentChecker.equals(target)) {
+            if(moveDir == Move.LEFT && player == Player.ONE || moveDir == Move.BACKRIGHT && player == Player.TWO) {
+                xCurrent += rowNum;
+                yCurrent += 1;
+            };
+            if(moveDir == Move.RIGHT && player == Player.ONE || moveDir == Move.BACKLEFT && player == Player.TWO) {
+                xCurrent -= (rowNum == 0 ? 1 : 0);
+                yCurrent += 1;
+            };
+            if(moveDir == Move.BACKLEFT && player == Player.ONE || moveDir == Move.RIGHT && player == Player.TWO) {
+                xCurrent += rowNum;
+                yCurrent -= 1;
+            };
+            if(moveDir == Move.BACKRIGHT && player == Player.ONE || moveDir == Move.LEFT && player == Player.TWO) {
+                xCurrent -= (rowNum == 0 ? 1 : 0);
+                yCurrent -= 1;
+            };
+
+            if(xCurrent < 0 || xCurrent > 3 || yCurrent < 0 || yCurrent > 7) return false;
+            currentChecker = g.findPiece(xCurrent, yCurrent);
+            if(currentChecker.player != Player.NONE && !currentChecker.equals(target)) {
+                return false;
+            }
         }
 
-        int xTesterVar = 0; // X Value of next Piece in direction to target piece
-        int yTesterVar = this.y + 1 * yDirection;
-
-
-        while(xTesterVar < target.x + xOffset * xDirection || yTesterVar < target.y + yOffset * yDirection) {
-            if(g.findPiece(xTesterVar, yTesterVar).player != Player.NONE) break;
-            xTesterVar += 1 * xDirection;
-            yTesterVar += 1 * yDirection;
-        }
-        
-        Move move = retrieveMoveTo(target);
-        if(move != Move.NONE) return true;
-        return false;
+        return true;
     }
-    //retrieveMoveTo
 }
+
 
 
 
