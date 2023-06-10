@@ -327,12 +327,21 @@ class Dame extends Checker {
     }
 
     //PoossibleMoves
-        //While loop mit xy values machen -> Geht so nicht, weil diagonal nicht immer gleich x+1 und y+1. X Wert kann auch gleich bleiben (siehe spielbrett)
+    List<Integer> possibleMoves(Game g) {
+        if(g.player != player) throw new IllegalArgumentException("Not your turn");
+        List<Integer> movePositions = new ArrayList<>();
+        for(Checker c: g.checkersList) {
+            if(this.canReach(c, g)) {
+                movePositions.add(c.pos);
+            }
+        }
+        return movePositions;
+    }
     
     //checks if there is a piece in the way from the current one to the target
     boolean canReach(Checker target, Game g) {
         if(player == Player.NONE) return false; //empty field cant Move
-        if(this.equals(target)) return false;
+        if(this.pos == target.pos) return false;
 
         int rowNum = getRowModulo();
         int xOffset = target.x - x;
@@ -356,20 +365,21 @@ class Dame extends Checker {
         Checker currentChecker = g.findPiece(xCurrent, yCurrent);
 
         while(!currentChecker.equals(target)) {
+            int rowOfCurrent = currentChecker.getRowModulo();
             if(moveDir == Move.LEFT && player == Player.ONE || moveDir == Move.BACKRIGHT && player == Player.TWO) {
-                xCurrent += rowNum;
+                xCurrent += rowOfCurrent;
                 yCurrent += 1;
             };
             if(moveDir == Move.RIGHT && player == Player.ONE || moveDir == Move.BACKLEFT && player == Player.TWO) {
-                xCurrent -= (rowNum == 0 ? 1 : 0);
+                xCurrent -= (rowOfCurrent == 0 ? 1 : 0);
                 yCurrent += 1;
             };
             if(moveDir == Move.BACKLEFT && player == Player.ONE || moveDir == Move.RIGHT && player == Player.TWO) {
-                xCurrent += rowNum;
+                xCurrent += rowOfCurrent;
                 yCurrent -= 1;
             };
             if(moveDir == Move.BACKRIGHT && player == Player.ONE || moveDir == Move.LEFT && player == Player.TWO) {
-                xCurrent -= (rowNum == 0 ? 1 : 0);
+                xCurrent -= (rowOfCurrent == 0 ? 1 : 0);
                 yCurrent -= 1;
             };
 
