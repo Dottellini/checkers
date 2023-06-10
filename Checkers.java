@@ -103,7 +103,7 @@ class Game {
         //////////////////////////
 
         if(piece.getClass() == Dame.class) {
-            if(piece.canReach(movePiece) && !movePiece.alive && movePiece.player == Player.NONE) {
+            if(!movePiece.alive && movePiece.player == Player.NONE) {
                 copy.checkersList.set(movePiece.pos, movePiece.asDame(piece)); //TODO: Check if this works lmao
                 piece.kill();
                 copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
@@ -113,7 +113,11 @@ class Game {
 
         //regular move without attacking etc.
         if(move == Move.BACKLEFT || move == Move.BACKRIGHT) return this; //throw new IllegalArgumentException("Cant move Backwards");
-        movePiece.become(piece);
+        if((copy.player == Player.ONE && movePiece.pos >= 28) || (copy.player == Player.TWO && movePiece.pos <= 3)) {
+            copy.checkersList.set(movePiece.pos, movePiece.asDame(piece)); //If at the end of the game, piece becomes a Dame
+        } else {
+            movePiece.become(piece);
+        }
         piece.kill();
         copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
 
@@ -125,7 +129,11 @@ class Game {
         int moveAttackValue = move.attack;
         Checker landingChecker = findPiece(piece.pos + (movementDirection * moveAttackValue));
         if(((landingChecker.pos / 4) % 2) != ((piece.pos / 4) % 2)) return this; //throw new IllegalArgumentException("Piece cant land behind attacked piece");
-        landingChecker.become(piece);
+        if((player == Player.ONE && landingChecker.pos >= 28) || (player == Player.TWO && landingChecker.pos <= 3)) {
+            checkersList.set(landingChecker.pos, landingChecker.asDame(piece)); //If at the end of the game, piece becomes a Dame
+        } else {
+            landingChecker.become(piece);
+        }
         target.kill();
         piece.kill();
         return this;
