@@ -390,16 +390,16 @@ class Dame extends Checker {
             if(moveDir == Move.LEFT && player == Player.ONE || moveDir == Move.BACKRIGHT && player == Player.TWO) {
                 xCurrent += rowOfCurrent;
                 yCurrent += 1;
-            };
-            if(moveDir == Move.RIGHT && player == Player.ONE || moveDir == Move.BACKLEFT && player == Player.TWO) {
+            }
+            else if(moveDir == Move.RIGHT && player == Player.ONE || moveDir == Move.BACKLEFT && player == Player.TWO) {
                 xCurrent -= (rowOfCurrent == 0 ? 1 : 0);
                 yCurrent += 1;
-            };
-            if(moveDir == Move.BACKLEFT && player == Player.ONE || moveDir == Move.RIGHT && player == Player.TWO) {
+            }
+            else if(moveDir == Move.BACKLEFT && player == Player.ONE || moveDir == Move.RIGHT && player == Player.TWO) {
                 xCurrent += rowOfCurrent;
                 yCurrent -= 1;
-            };
-            if(moveDir == Move.BACKRIGHT && player == Player.ONE || moveDir == Move.LEFT && player == Player.TWO) {
+            }
+            else if(moveDir == Move.BACKRIGHT && player == Player.ONE || moveDir == Move.LEFT && player == Player.TWO) {
                 xCurrent -= (rowOfCurrent == 0 ? 1 : 0);
                 yCurrent -= 1;
             };
