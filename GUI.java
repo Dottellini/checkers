@@ -7,7 +7,10 @@ import java.util.stream.IntStream;
 import processing.core.PApplet;
 import processing.core.PGraphics;
 
+
 public class MySketch extends PApplet {
+    static int width = 1000;
+    static int height = 1000;
     
     
     public static void main(String[] args) {
@@ -21,14 +24,14 @@ public class MySketch extends PApplet {
     }
 
     public void setup() {
-        background(backgroundColor);
+        background(color(230, 237, 237));
         noStroke();
         
     }
 
     public void mousePressed() {
         
-        };
+        
     }
 
     public void draw() {
