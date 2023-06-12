@@ -1,47 +1,6 @@
 import java.util.*;
 import java.util.stream.Collectors;
 
-import java.lang.reflect.WildcardType;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Objects;
-import java.util.Random;
-import java.util.stream.IntStream;
-import processing.core.PApplet;
-import processing.core.PGraphics;
-
-//PROCESSING Stuff
-public class CheckersGame extends PApplet {
-    static int width = 1280;
-    static int height = 720;
-    
-    
-    public static void main(String[] args) {
-        String[] appArgs = {"Dame"};
-		CheckersGame mySketch = new CheckersGame();
-		PApplet.runSketch(appArgs, mySketch);
-    }
-
-    public void settings() {
-        size(width, height);
-    }
-
-    public void setup() {
-        background(color(255, 255, 255));
-        noStroke();
-        
-    }
-
-    public void mousePressed() {
-        
-        
-    }
-
-    public void draw() {
-        
-    }
-}
-
 enum Player {
     ONE(0),
     TWO(1),
@@ -335,8 +294,6 @@ class Checker {
 
     //retrieveMoveTo using the x, y coordinates (works for any amount of rows)
     Move retrieveMoveTo(Checker target, int xOffset, int xDirection, int yDirection) {
-        int rowNum = getRowModulo();
-
         //Calculate the MoveDirection
         Move moveDir = Move.NONE;
         if(xDirection > 0 && yDirection > 0) {
@@ -460,7 +417,7 @@ class Dame extends Checker {
 
 
 //TESTING
-/* 
+
 Game g = new Game();
 
 //Regular Move Player 1
@@ -519,4 +476,3 @@ Game d = g.move(26, 30);
 
 d = d.move(4, 0);
 assert d.checkersList.get(0).getClass() == Dame.class && d.checkersList.get(30).getClass() == Dame.class: "Check if creating Dame works";
-*/
