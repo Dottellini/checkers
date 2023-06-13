@@ -29,7 +29,14 @@ enum Move {
     }
 }
 
-class Game {
+interface IGame {
+    public Game move(int piecePos, int movePos);
+    public Game attack(Checker piece, Checker target, Move move);
+    public boolean isGameOver();
+    public boolean isWinning();
+}
+
+class Game implements IGame {
     List<Checker> checkersList = new ArrayList<>();
     Player player = Player.ONE;
     int boardSize = 32;
@@ -55,7 +62,7 @@ class Game {
         }
     }
 
-    Game move(int piecePos, int movePos) {
+    public Game move(int piecePos, int movePos) {
         assert !isGameOver() : "Game is over";
         if(movePos > 31 || movePos < 0) return this; //throw new IllegalArgumentException("Player cant move outside of playing field vertically");
 
@@ -123,7 +130,7 @@ class Game {
         return copy;
     }
 
-    Game attack(Checker piece, Checker target, Move move) {
+    public Game attack(Checker piece, Checker target, Move move) {
         int movementDirection = piece.player == Player.ONE ? 1 : -1;
         int moveAttackValue = move.attack;
         Checker landingChecker = findPiece(piece.pos + (movementDirection * moveAttackValue));
@@ -155,7 +162,7 @@ class Game {
         return checkersList.stream().filter(item -> item.alive && item.player == player).count();
     }
 
-    boolean isGameOver() {
+    public boolean isGameOver() {
         long pieceAmount1= pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
         long pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
         if(pieceAmount1 <= 0 || pieceAmount2 <= 0) return true;

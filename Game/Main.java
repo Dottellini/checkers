@@ -1,6 +1,6 @@
 package Game;
 
-//javac -cp ./Game/core.jar -d .\Game\out\production\Game\ ./Game/Main.java
+//javac -cp ./Game/core.jar -d ./Game/out/production/Game/ ./Game/Main.java
 //java -classpath "C:\Users\naehr\Desktop\Daten\coding\java\checkers\Game\out\production\Game;C:\Users\naehr\Desktop\Daten\coding\java\checkers\Game\core.jar" Game.Main
 
 import java.util.*;
