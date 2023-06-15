@@ -29,11 +29,35 @@ enum Move {
     }
 }
 
+class MoveElem {
+    int from;
+    int to;
+
+    MoveElem(int from, int to) {
+        this.from = from;
+        this.to = to;
+    }
+
+    @Override
+    public boolean equals(Object other) {
+        if(other == null) return false;
+        if(other == this) return true;
+        if(other.getClass() != getClass()) return false;
+        MoveElem that = (MoveElem)other;
+        return that.from == this.from && that.to == this.to;
+    }
+
+    @Override
+    public String toString() {
+        return from + "->" + to;
+    }
+}
+
 interface IGame {
     public Game move(int piecePos, int movePos);
     public Game attack(Checker piece, Checker target, Move move);
     public boolean isGameOver();
-    public boolean isWinning();
+    public Player isWinning();
 }
 
 class Game implements IGame {
@@ -169,7 +193,7 @@ class Game implements IGame {
         return false;
     }
 
-    Player isWinning() {
+    public Player isWinning() {
         long pieceAmount1 = pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
         long pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
         if(pieceAmount1 > pieceAmount2) return Player.ONE;
@@ -178,6 +202,16 @@ class Game implements IGame {
     }
 
     //TODO: Zugalgorithmus
+    //TODO: Minimax algorithmus und best move berechnen
+    List<MoveElem> getMoves() {
+        List<MoveElem> moves = new ArrayList<>();
+        for(Checker c: checkersList) {
+            if(c.player != this.player) continue; //Not this players turn
+            c.possibleMoves(this).stream().forEach(m -> moves.add(m));
+        }
+        
+        return moves;
+    }
 
     @Override
     public boolean equals(Object other) {
@@ -244,9 +278,8 @@ class Checker {
     }
 
     //Returns a List of possible Moves of this piece in Game g
-    List<Integer> possibleMoves(Game g) {
-        if(g.player != player) throw new IllegalArgumentException("Not your turn");
-        List<Integer> movePositions = new ArrayList<>();
+    List<MoveElem> possibleMoves(Game g) {
+        List<MoveElem> movePositions = new ArrayList<>();
         if(player == Player.NONE) return movePositions;
         int rowNum = getRowModulo();
 
@@ -262,7 +295,7 @@ class Checker {
             }
             Game copy = g.move(pos, pos + moveValue);
             if(!copy.equals(g)) {
-                movePositions.add(pos + m.value);
+                movePositions.add(new MoveElem(pos, pos + m.value));
             }
         }
 
@@ -352,13 +385,18 @@ class Dame extends Checker {
         return new Dame(this.player, this.x, this.y, this.pos);
     }
 
-    //PoossibleMoves
-    List<Integer> possibleMoves(Game g) {
-        if(g.player != player) throw new IllegalArgumentException("Not your turn");
-        List<Integer> movePositions = new ArrayList<>();
+    //PossibleMoves
+    List<MoveElem> possibleMoves(Game g) {
+        List<MoveElem> movePositions = new ArrayList<>();
         for(Checker c: g.checkersList) {
             if(this.canReach(c, g)) {
-                movePositions.add(c.pos);
+                if(c.alive && (player == Player.ONE ? c.y - this.y > 1 : c.y - this.y < -1)) continue; //If target is enemy piece and is not in attack range
+                if(c.alive && c.player != player) { //Check if attack is possible, if not, skip
+                    Game copy = Game.of(g.checkersList);
+                    if(copy.attack(this, c, this.retrieveMoveTo(c)).equals(copy)) continue;
+                }
+
+                movePositions.add(new MoveElem(pos, c.pos));
             }
         }
         return movePositions;
@@ -424,7 +462,7 @@ class Dame extends Checker {
 
 
 //TESTING
-
+/*
 Game g = new Game();
 
 //Regular Move Player 1
@@ -483,3 +521,4 @@ Game d = g.move(26, 30);
 
 d = d.move(4, 0);
 assert d.checkersList.get(0).getClass() == Dame.class && d.checkersList.get(30).getClass() == Dame.class: "Check if creating Dame works";
+*/

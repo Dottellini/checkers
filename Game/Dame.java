@@ -17,6 +17,12 @@ class Dame extends Checker {
         List<Integer> movePositions = new ArrayList<>();
         for(Checker c: g.checkersList) {
             if(this.canReach(c, g)) {
+                if(c.alive && (player == Player.ONE ? c.y - this.y > 1 : c.y - this.y < -1)) continue; //If target is enemy piece and is not in attack range
+                if(c.alive && c.player != player) { //Check if attack is possible, if not, skip
+                    Game copy = Game.of(g.checkersList);
+                    if(copy.attack(this, c, this.retrieveMoveTo(c)).equals(copy)) continue;
+                }
+
                 movePositions.add(c.pos);
             }
         }
