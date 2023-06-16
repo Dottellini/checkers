@@ -87,7 +87,7 @@ class Game implements IGame {
     }
 
     public Game move(int piecePos, int movePos) {
-        assert !isGameOver() : "Game is over";
+        //assert !isGameOver() : "Game is over";
         if(movePos > 31 || movePos < 0) return this; //throw new IllegalArgumentException("Player cant move outside of playing field vertically");
 
         Game copy = Game.of(this.checkersList);
@@ -157,6 +157,9 @@ class Game implements IGame {
     public Game attack(Checker piece, Checker target, Move move) {
         int movementDirection = piece.player == Player.ONE ? 1 : -1;
         int moveAttackValue = move.attack;
+        if(piece.pos + (movementDirection * moveAttackValue) > 31 || piece.pos + (movementDirection * moveAttackValue) < 0) {
+            return this;
+        }
         Checker landingChecker = findPiece(piece.pos + (movementDirection * moveAttackValue));
         if(((landingChecker.pos / 4) % 2) != ((piece.pos / 4) % 2)) return this; //throw new IllegalArgumentException("Piece cant land behind attacked piece");
         if((player == Player.ONE && landingChecker.pos >= 28) || (player == Player.TWO && landingChecker.pos <= 3)) {
@@ -172,38 +175,37 @@ class Game implements IGame {
     Checker findPiece(int x, int y) {
         assert x >= 0 && x < 4 && y >= 0 && y < 8;
         Optional<Checker> pieceOptional = checkersList.stream().filter(c -> c.x == x && c.y == y).findFirst();
-        if(!pieceOptional.isPresent()) throw new IllegalArgumentException("No piece found");
+        if(!pieceOptional.isPresent()) throw new IllegalArgumentException("No piece found " + x + " " + y);
         return pieceOptional.get();
     }
 
     Checker findPiece(int pos) {
         Optional<Checker> pieceOptional = checkersList.stream().filter(c -> c.pos == pos).findFirst();
-        if(!pieceOptional.isPresent()) throw new IllegalArgumentException("No piece found");
+        if(!pieceOptional.isPresent()) throw new IllegalArgumentException("No piece found " + pos);
         return pieceOptional.get();
     }
 
-    long pieceAmountOfPlayer(Player player) {
-        return checkersList.stream().filter(item -> item.alive && item.player == player).count();
+    int pieceAmountOfPlayer(Player player) {
+        return (int)checkersList.stream().filter(item -> item.alive && item.player == player).count();
     }
 
     public boolean isGameOver() {
-        long pieceAmount1= pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
-        long pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
+        int pieceAmount1= pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
+        int pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
         if(pieceAmount1 <= 0 || pieceAmount2 <= 0) return true;
         return false;
     }
 
     public Player isWinning() {
-        long pieceAmount1 = pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
-        long pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
+        int pieceAmount1 = pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
+        int pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
         if(pieceAmount1 > pieceAmount2) return Player.ONE;
         else if (pieceAmount1 < pieceAmount2) return Player.TWO;
         return Player.NONE;
     }
 
-    //TODO: Zugalgorithmus
-    //TODO: Minimax algorithmus und best move berechnen
-    List<MoveElem> getMoves() {
+    //TODO: Vielleicht werden Damen manchmal als Spieler: NONE dargestellt. Muss man testen.
+    List<MoveElem> getPossibleMoves() {
         List<MoveElem> moves = new ArrayList<>();
         for(Checker c: checkersList) {
             if(c.player != this.player) continue; //Not this players turn
@@ -211,6 +213,59 @@ class Game implements IGame {
         }
         
         return moves;
+    }
+
+    MoveElem bestMove() {
+        assert !this.isGameOver();
+
+        int bestValue = Integer.MIN_VALUE;
+        MoveElem bestMove = null;
+        List<MoveElem> possibleMoves = this.getPossibleMoves();
+
+        for(MoveElem m: possibleMoves) {
+            Game nextGame = this.move(m.from, m.to);
+            int moveValue = miniMax(nextGame, false, 3);
+
+            if(moveValue > bestValue) {
+                bestValue = moveValue;
+                bestMove = m;
+            }
+        }
+
+        return bestMove;
+    }
+
+    private int miniMax(Game g, boolean isMaximizingPlayer, int depth) {
+        if(g.isGameOver() || depth == 0) {
+            return evaluate(g, isMaximizingPlayer);
+        }
+
+        int bestValue = isMaximizingPlayer ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+        List<MoveElem> possibleMoves = g.getPossibleMoves();
+        
+        for(MoveElem m: possibleMoves) {
+            Game nextGame = g.move(m.from, m.to);
+            int childValue = miniMax(nextGame, !isMaximizingPlayer, depth - 1);
+            bestValue = isMaximizingPlayer ? Math.max(bestValue, childValue) : Math.min(bestValue, childValue);
+        }
+
+        return bestValue;
+    }
+
+    private int evaluate(Game g, boolean isMaximizingPlayer) {
+        if(g.isGameOver()){
+            if(isMaximizingPlayer) return Integer.MIN_VALUE;
+            else if(!isMaximizingPlayer) return Integer.MAX_VALUE;
+            else return 0;
+        }
+
+
+        int maximizingPlayerCount = isMaximizingPlayer ? g.pieceAmountOfPlayer(g.player) : g.pieceAmountOfPlayer(g.player == Player.ONE ? Player.TWO : Player.ONE);
+        int minimizingPlayerCount = !isMaximizingPlayer ? g.pieceAmountOfPlayer(g.player) : g.pieceAmountOfPlayer(g.player == Player.ONE ? Player.TWO : Player.ONE);
+        int eval = maximizingPlayerCount - minimizingPlayerCount;
+
+
+        return isMaximizingPlayer ? eval : -eval;
     }
 
     @Override
@@ -293,9 +348,11 @@ class Checker {
                 if(m == Move.LEFT || m == Move.RIGHT) moveValue = -m.value - (rowNum == 0 ? 1 : 0);
                 if(m == Move.BACKLEFT || m == Move.BACKRIGHT) moveValue = -m.value + rowNum;
             }
+
             Game copy = g.move(pos, pos + moveValue);
-            if(!copy.equals(g)) {
-                movePositions.add(new MoveElem(pos, pos + m.value));
+        
+            if(!copy.equals(g) && pos + moveValue > 0 && pos + moveValue < 32) {
+                movePositions.add(new MoveElem(pos, pos + moveValue));
             }
         }
 
