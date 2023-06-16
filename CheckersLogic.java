@@ -519,7 +519,7 @@ class Dame extends Checker {
 
 
 //TESTING
-/*
+
 Game g = new Game();
 
 //Regular Move Player 1
@@ -578,4 +578,3 @@ Game d = g.move(26, 30);
 
 d = d.move(4, 0);
 assert d.checkersList.get(0).getClass() == Dame.class && d.checkersList.get(30).getClass() == Dame.class: "Check if creating Dame works";
-*/
