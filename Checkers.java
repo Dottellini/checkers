@@ -1,6 +1,96 @@
 import java.util.*;
 import java.util.stream.Collectors;
 
+
+import java.lang.reflect.WildcardType;
+import processing.core.PApplet;
+import processing.core.PGraphics;
+
+
+//PROCESSING Stuff
+public class Checkers extends PApplet {
+    static int width = 1600;
+    static int height = 900;
+    int playingFieldX = 100;
+    int playingFieldY = 100;
+    int whiteField = color(247, 216, 186);
+    int darkField = color(77, 66, 55);
+    int playingFieldOffsetX = (width - 800) / 2; //These are used to center the playingfield
+    int playingFieldOffsetY = (height - 800) / 2;
+    int playerOneColor = color(138, 35, 12);
+    int playerTwoColor = color(245, 233, 220);
+    IGame game;
+    Checker fromChecker = null;
+
+    
+    public static void main(String[] args) {
+        String[] appArgs = {"Dame"};
+		Checkers mySketch = new Checkers();
+		PApplet.runSketch(appArgs, mySketch);
+    }
+
+    public void settings() {
+        size(width, height);
+    }
+
+    public void setup() {
+        background(color(255, 255, 255));
+        noStroke();
+        game = new Game();
+        
+    }
+
+    public void mousePressed() {
+        System.out.println(game.getPlayer());
+        for(Checker c: game.getPlayingfield()) {
+            if(c.isClicked(mouseX, mouseY, 100, playingFieldOffsetX, playingFieldOffsetY)) {
+                System.out.println(c);
+                if(fromChecker == null) fromChecker = c;
+                else {
+                    game = game.move(fromChecker.pos, c.pos);
+                    fromChecker = null;
+                }
+            }
+        }
+        
+    }
+
+    public void draw() {
+        //Draw the Playingfield
+        for(int i = 0; i < 8; i++) {
+            for(int j = 0; j < 8; j++) {
+                if((i + j) % 2 == 0) {
+                    fill(whiteField);
+                    rect(playingFieldOffsetX + playingFieldX * j, playingFieldOffsetY + playingFieldY * i, 100, 100);
+                } else {
+                    fill(darkField);
+                    rect(playingFieldOffsetX + playingFieldX * j, playingFieldOffsetY + playingFieldY * i, 100, 100);
+                }
+            }
+        }
+
+        //Draw the Checkerpieces
+        for(Checker c: game.getPlayingfield()) {
+            if(c.player == Player.NONE) continue;
+            int skipFieldOffsetX = (c.x + c.y % 2) * 100;
+            int strokeColor = color(46, 46, 46);
+            if(c.equals(fromChecker)) strokeColor = color(255, 0, 0);
+ 
+            if(c.getClass() == Dame.class) {
+                fill(c.player == Player.ONE ? playerOneColor : playerTwoColor);
+                stroke(strokeColor);
+                circle(playingFieldOffsetX + playingFieldX * (c.x) + 50 + skipFieldOffsetX, playingFieldOffsetY + playingFieldY * c.y + 50, 75);
+                circle(playingFieldOffsetX + playingFieldX * (c.x) + 50 + skipFieldOffsetX, playingFieldOffsetY + playingFieldY * c.y + 50, 40);
+            } else {
+                fill(c.player == Player.ONE ? playerOneColor : playerTwoColor);
+                stroke(strokeColor);
+                circle(playingFieldOffsetX + playingFieldX * (c.x) + 50 + skipFieldOffsetX, playingFieldOffsetY + playingFieldY * c.y + 50, 75);
+            }
+        }
+    }
+}
+
+
 enum Player {
     ONE(0),
     TWO(1),
@@ -56,8 +146,22 @@ class MoveElem {
 interface IGame {
     public Game move(int piecePos, int movePos);
     public Game attack(Checker piece, Checker target, Move move);
-    public boolean isGameOver();
-    public Player isWinning();
+    public List<Checker> getPlayingfield();
+    public int pieceAmountOfPlayer(Player player);
+    public Player getPlayer();
+    default public boolean isGameOver() {
+        int pieceAmount1= pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
+        int pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
+        if(pieceAmount1 <= 0 || pieceAmount2 <= 0) return true;
+        return false;
+    }
+    default public Player isWinning() {
+        int pieceAmount1 = pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
+        int pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
+        if(pieceAmount1 > pieceAmount2) return Player.ONE;
+        else if (pieceAmount1 < pieceAmount2) return Player.TWO;
+        return Player.NONE;
+    }
 }
 
 class Game implements IGame {
@@ -84,6 +188,14 @@ class Game implements IGame {
             if(i < 12 || i > 19) checkersList.add(new Checker(y < 4 ? Player.ONE : Player.TWO, i % 4, y, i)); //These are checkers for players 1 and 2
             else checkersList.add(new Checker(Player.NONE, i % 4, y, i)); //These are empty spaces
         }
+    }
+
+    public Player getPlayer() {
+        return player;
+    }
+
+    public List<Checker> getPlayingfield() {
+        return this.checkersList;
     }
 
     public Game move(int piecePos, int movePos) {
@@ -120,8 +232,6 @@ class Game implements IGame {
             if(target.alive && target.player != piece.player) {
                 return copy.attack(piece, target, move);
             }
-
-            return this;
         }
 
         if(!piece.canReach(movePiece)) return this; //throw new IllegalArgumentException("Target cant be reached");
@@ -130,10 +240,9 @@ class Game implements IGame {
             return copy.attack(piece, movePiece, move);
         }
         //////////////////////////
-
         if(piece.getClass() == Dame.class) {
             if(!movePiece.alive && movePiece.player == Player.NONE) {
-                copy.checkersList.set(movePiece.pos, movePiece.asDame(piece)); //TODO: Check if this works lmao
+                copy.checkersList.set(movePiece.pos, movePiece.asDame(piece));
                 piece.kill();
                 copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
                 return copy;
@@ -149,6 +258,7 @@ class Game implements IGame {
         }
 
         piece.kill();
+        System.out.println("player changed");
         copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
 
         return copy;
@@ -162,7 +272,8 @@ class Game implements IGame {
         }
         Checker landingChecker = findPiece(piece.pos + (movementDirection * moveAttackValue));
         if(((landingChecker.pos / 4) % 2) != ((piece.pos / 4) % 2)) return this; //throw new IllegalArgumentException("Piece cant land behind attacked piece");
-        if((player == Player.ONE && landingChecker.pos >= 28) || (player == Player.TWO && landingChecker.pos <= 3)) {
+        if(landingChecker.player != Player.NONE) return this;
+        if((player == Player.ONE && landingChecker.pos >= 28) || (player == Player.TWO && landingChecker.pos <= 3) || (piece.getClass() == Dame.class)) { //TODO: Manchmal werden pieces zu Damen
             checkersList.set(landingChecker.pos, landingChecker.asDame(piece)); //If at the end of the game, piece becomes a Dame
         } else {
             landingChecker.become(piece);
@@ -185,26 +296,11 @@ class Game implements IGame {
         return pieceOptional.get();
     }
 
-    int pieceAmountOfPlayer(Player player) {
+    public int pieceAmountOfPlayer(Player player) {
         return (int)checkersList.stream().filter(item -> item.alive && item.player == player).count();
     }
 
-    public boolean isGameOver() {
-        int pieceAmount1= pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
-        int pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
-        if(pieceAmount1 <= 0 || pieceAmount2 <= 0) return true;
-        return false;
-    }
 
-    public Player isWinning() {
-        int pieceAmount1 = pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
-        int pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
-        if(pieceAmount1 > pieceAmount2) return Player.ONE;
-        else if (pieceAmount1 < pieceAmount2) return Player.TWO;
-        return Player.NONE;
-    }
-
-    //TODO: Vielleicht werden Damen manchmal als Spieler: NONE dargestellt. Muss man testen.
     List<MoveElem> getPossibleMoves() {
         List<MoveElem> moves = new ArrayList<>();
         for(Checker c: checkersList) {
@@ -314,6 +410,15 @@ class Checker {
         if(this.player == Player.NONE) this.alive = false; //Empty fields are not alive
     }
 
+    //This method is used for Processing mouse click check
+    boolean isClicked(int mouseX, int mouseY, int diameter, int playingFieldOffsetX, int playingFieldOffsetY) {
+        int skipFieldOffsetX = (x + y % 2) * 100;
+        int checkValueX = playingFieldOffsetX + 100 * (x) + 50 + skipFieldOffsetX;
+        int checkValueY = playingFieldOffsetY + 100 * (y) + 50;
+
+        return mouseX >= checkValueX - diameter/2 && mouseX <= checkValueX + diameter/2 && mouseY >= checkValueY - diameter/2 && mouseY <= checkValueY + diameter/2;
+    }
+
     //This checker becomes the target checker
     void become(Checker target) {
         this.player = target.player;
@@ -367,7 +472,6 @@ class Checker {
         return false;
     }
 
-    //TODO: Mit der unteren methode ersetzen?
     //Return Move that is required to get to target (Only works if the target is 1 row away)
     Move retrieveMoveTo(Checker target) {
         int offset = target.pos - this.pos; 
@@ -460,6 +564,7 @@ class Dame extends Checker {
     }
     
     //checks if there is a piece in the way from the current one to the target
+    //TODO: Doesnt work for move that goes backwards multiple places
     boolean canReach(Checker target, Game g) {
         if(player == Player.NONE) return false; //empty field cant Move
         if(this.pos == target.pos) return false;
@@ -519,7 +624,7 @@ class Dame extends Checker {
 
 
 //TESTING
-
+/*
 Game g = new Game();
 
 //Regular Move Player 1
@@ -578,3 +683,4 @@ Game d = g.move(26, 30);
 
 d = d.move(4, 0);
 assert d.checkersList.get(0).getClass() == Dame.class && d.checkersList.get(30).getClass() == Dame.class: "Check if creating Dame works";
+*/
