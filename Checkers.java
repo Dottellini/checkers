@@ -41,10 +41,8 @@ public class Checkers extends PApplet {
     }
 
     public void mousePressed() {
-        System.out.println(game.getPlayer());
         for(Checker c: game.getPlayingfield()) {
             if(c.isClicked(mouseX, mouseY, 100, playingFieldOffsetX, playingFieldOffsetY)) {
-                System.out.println(c);
                 if(fromChecker == null) fromChecker = c;
                 else {
                     game = game.move(fromChecker.pos, c.pos);
@@ -198,8 +196,9 @@ class Game implements IGame {
         return this.checkersList;
     }
 
+
     public Game move(int piecePos, int movePos) {
-        //assert !isGameOver() : "Game is over";
+        assert !isGameOver() : "Game is over";
         if(movePos > 31 || movePos < 0) return this; //throw new IllegalArgumentException("Player cant move outside of playing field vertically");
 
         Game copy = Game.of(this.checkersList);
@@ -228,13 +227,14 @@ class Game implements IGame {
                 }
             }
             Checker target = copy.findPiece(piece.pos + moveDirection * (move.attack - move.value) + offsetByRowNum);
-            if(!piece.canReach(target)) return this; //throw new IllegalArgumentException("Target cant be reached");
+            if(!piece.canReach(target, copy)) return this; //throw new IllegalArgumentException("Target cant be reached");
             if(target.alive && target.player != piece.player) {
+                System.out.println("Here1");
                 return copy.attack(piece, target, move);
             }
         }
 
-        if(!piece.canReach(movePiece)) return this; //throw new IllegalArgumentException("Target cant be reached");
+        if(!piece.canReach(movePiece, copy)) return this; //throw new IllegalArgumentException("Target cant be reached");
 
         if(movePiece.alive && movePiece.player != piece.player) {
             return copy.attack(piece, movePiece, move);
@@ -243,7 +243,7 @@ class Game implements IGame {
         if(piece.getClass() == Dame.class) {
             if(!movePiece.alive && movePiece.player == Player.NONE) {
                 copy.checkersList.set(movePiece.pos, movePiece.asDame(piece));
-                piece.kill();
+                kill(piece, copy);
                 copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
                 return copy;
             }
@@ -257,8 +257,7 @@ class Game implements IGame {
             movePiece.become(piece);
         }
 
-        piece.kill();
-        System.out.println("player changed");
+        kill(piece, copy);
         copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
 
         return copy;
@@ -273,14 +272,21 @@ class Game implements IGame {
         Checker landingChecker = findPiece(piece.pos + (movementDirection * moveAttackValue));
         if(((landingChecker.pos / 4) % 2) != ((piece.pos / 4) % 2)) return this; //throw new IllegalArgumentException("Piece cant land behind attacked piece");
         if(landingChecker.player != Player.NONE) return this;
-        if((player == Player.ONE && landingChecker.pos >= 28) || (player == Player.TWO && landingChecker.pos <= 3) || (piece.getClass() == Dame.class)) { //TODO: Manchmal werden pieces zu Damen
+        if((player == Player.ONE && landingChecker.pos >= 28) || (player == Player.TWO && landingChecker.pos <= 3) || (piece.getClass() == Dame.class)) {
             checkersList.set(landingChecker.pos, landingChecker.asDame(piece)); //If at the end of the game, piece becomes a Dame
         } else {
             landingChecker.become(piece);
         }
-        target.kill();
-        piece.kill();
+        this.player = piece.player;
+        kill(target, this);
+        kill(piece, this);
         return this;
+    }
+
+    void kill(Checker c, Game g) {
+        Checker d = new Checker(Player.NONE, c.x, c.y, c.pos);
+        d.kill();
+        g.checkersList.set(c.pos, d);
     }
 
     Checker findPiece(int x, int y) {
@@ -430,6 +436,7 @@ class Checker {
         d.alive = true;
         return d;
     }
+    
 
     //Kills current Checker
     void kill() {
@@ -465,7 +472,7 @@ class Checker {
     }
 
     //Checks if target is in reach (1 row up or down)
-    boolean canReach(Checker target) {
+    boolean canReach(Checker target, Game g) {
         int rowNum = getRowModulo();
         Move move = retrieveMoveTo(target);
         if(rowNum != target.getRowModulo() && move != Move.NONE) return true;
@@ -533,7 +540,7 @@ class Checker {
 
     @Override
     public String toString() {
-        return "(" + this.x + "/" + this.y + ") Pos:" + this.pos + " Team:" + this.player;
+        return "(" + this.x + "/" + this.y + ") Pos:" + this.pos + " Team:" + this.player + " TYPE: " + this.getClass();
     }
 }
 
@@ -683,4 +690,7 @@ Game d = g.move(26, 30);
 
 d = d.move(4, 0);
 assert d.checkersList.get(0).getClass() == Dame.class && d.checkersList.get(30).getClass() == Dame.class: "Check if creating Dame works";
+
+//Dame movement
+assert !d.equals(d.move(0, 9)): "Move dame multiple backright";
 */
