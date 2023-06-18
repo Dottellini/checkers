@@ -9,6 +9,7 @@ import processing.core.PGraphics;
 
 //PROCESSING Stuff
 public class Checkers extends PApplet {
+    Stack<IGame> history = new Stack<>();
     static int width = 1600;
     static int height = 900;
     int playingFieldX = 100;
@@ -21,6 +22,8 @@ public class Checkers extends PApplet {
     int playerTwoColor = color(245, 233, 220);
     IGame game;
     Checker fromChecker = null;
+    List<MoveElem> possibleMovesFromChecker = new ArrayList<>();
+    RevertMoveButton revertMoveButton;
 
     
     public static void main(String[] args) {
@@ -37,14 +40,23 @@ public class Checkers extends PApplet {
         background(color(255, 255, 255));
         noStroke();
         game = new Game();
+        revertMoveButton = new RevertMoveButton(width - 275, height - 200);
         
     }
 
     public void mousePressed() {
+        if(revertMoveButton.isClicked(mouseX, mouseY)) {
+            if(!history.empty()) {
+                game = history.pop();
+            }
+        }
+
+
         for(Checker c: game.getPlayingfield()) {
             if(c.isClicked(mouseX, mouseY, 100, playingFieldOffsetX, playingFieldOffsetY)) {
                 if(fromChecker == null) fromChecker = c;
                 else {
+                    history.add(game);
                     game = game.move(fromChecker.pos, c.pos);
                     fromChecker = null;
                 }
@@ -54,7 +66,18 @@ public class Checkers extends PApplet {
     }
 
     public void draw() {
+        if(fromChecker != null) {
+            possibleMovesFromChecker = fromChecker.possibleMoves(game);
+        } else {
+            possibleMovesFromChecker = new ArrayList<>();
+        }
+
+        System.out.println(game.getPlayer());
+
+        strokeWeight(4);
+
         //Draw the Playingfield
+        stroke(color(46, 46, 46));
         for(int i = 0; i < 8; i++) {
             for(int j = 0; j < 8; j++) {
                 if((i + j) % 2 == 0) {
@@ -69,24 +92,69 @@ public class Checkers extends PApplet {
 
         //Draw the Checkerpieces
         for(Checker c: game.getPlayingfield()) {
-            if(c.player == Player.NONE) continue;
+            boolean isPossibleMove = false;
             int skipFieldOffsetX = (c.x + c.y % 2) * 100;
             int strokeColor = color(46, 46, 46);
             if(c.equals(fromChecker)) strokeColor = color(255, 0, 0);
- 
-            if(c.getClass() == Dame.class) {
+
+            for(MoveElem m : possibleMovesFromChecker) {
+                if(m.to == c.pos) {
+                    isPossibleMove = true;
+                    strokeColor = color(31, 218, 255);
+                }
+            }
+            
+            if(c.getClass() == Dame.class) { //Draw a dame piece
                 fill(c.player == Player.ONE ? playerOneColor : playerTwoColor);
                 stroke(strokeColor);
                 circle(playingFieldOffsetX + playingFieldX * (c.x) + 50 + skipFieldOffsetX, playingFieldOffsetY + playingFieldY * c.y + 50, 75);
                 circle(playingFieldOffsetX + playingFieldX * (c.x) + 50 + skipFieldOffsetX, playingFieldOffsetY + playingFieldY * c.y + 50, 40);
             } else {
-                fill(c.player == Player.ONE ? playerOneColor : playerTwoColor);
-                stroke(strokeColor);
+                if(c.player == Player.NONE) { //Draw an empty space with stroke if it is a possible move
+                    noFill();
+                    if(isPossibleMove) stroke(strokeColor);
+                    else noStroke();
+                } else { //Draw a player piece
+                    fill(c.player == Player.ONE ? playerOneColor : playerTwoColor);
+                    stroke(strokeColor);
+                }
                 circle(playingFieldOffsetX + playingFieldX * (c.x) + 50 + skipFieldOffsetX, playingFieldOffsetY + playingFieldY * c.y + 50, 75);
             }
         }
+
+        revertMoveButton.draw(super.g);
     }
 }
+
+
+class RevertMoveButton {
+    int x, y;
+    int width = 155;
+    int height = 50;
+
+    RevertMoveButton(int x, int y) {
+        this.x = x;
+        this.y = y;
+    }
+
+    boolean isClicked(int mouseX, int mouseY) {       
+        return mouseX >= x - width && mouseX <= x + width && mouseY >= y - height && mouseY <= y + height;
+    }
+
+    public void draw(PGraphics g) {
+        g.noStroke();
+        g.textSize(30);
+        g.fill(g.color(61, 175, 224));
+        g.rect(x, y, width, height);
+        g.fill(g.color(255, 255, 255));
+        g.text("Revert Move", x, y + 35);
+    }
+}
+
+
+
+
+// GAME LOGIC STARTS HERE
 
 
 enum Player {
@@ -164,7 +232,7 @@ interface IGame {
 
 class Game implements IGame {
     List<Checker> checkersList = new ArrayList<>();
-    Player player = Player.ONE;
+    Player player = Player.ONE; //TODO: Fix bug where an attack to the last place (becoming a dame) doesnt make dame piece when this is set to Player two
     int boardSize = 32;
 
     static Game of(List<Checker> checkersList) {
@@ -229,7 +297,6 @@ class Game implements IGame {
             Checker target = copy.findPiece(piece.pos + moveDirection * (move.attack - move.value) + offsetByRowNum);
             if(!piece.canReach(target, copy)) return this; //throw new IllegalArgumentException("Target cant be reached");
             if(target.alive && target.player != piece.player) {
-                System.out.println("Here1");
                 return copy.attack(piece, target, move);
             }
         }
@@ -273,6 +340,7 @@ class Game implements IGame {
         if(((landingChecker.pos / 4) % 2) != ((piece.pos / 4) % 2)) return this; //throw new IllegalArgumentException("Piece cant land behind attacked piece");
         if(landingChecker.player != Player.NONE) return this;
         if((player == Player.ONE && landingChecker.pos >= 28) || (player == Player.TWO && landingChecker.pos <= 3) || (piece.getClass() == Dame.class)) {
+            System.out.println("Here3");
             checkersList.set(landingChecker.pos, landingChecker.asDame(piece)); //If at the end of the game, piece becomes a Dame
         } else {
             landingChecker.become(piece);
@@ -445,7 +513,7 @@ class Checker {
     }
 
     //Returns a List of possible Moves of this piece in Game g
-    List<MoveElem> possibleMoves(Game g) {
+    List<MoveElem> possibleMoves(IGame g) {
         List<MoveElem> movePositions = new ArrayList<>();
         if(player == Player.NONE) return movePositions;
         int rowNum = getRowModulo();
@@ -472,7 +540,7 @@ class Checker {
     }
 
     //Checks if target is in reach (1 row up or down)
-    boolean canReach(Checker target, Game g) {
+    boolean canReach(Checker target, IGame g) {
         int rowNum = getRowModulo();
         Move move = retrieveMoveTo(target);
         if(rowNum != target.getRowModulo() && move != Move.NONE) return true;
@@ -554,13 +622,13 @@ class Dame extends Checker {
     }
 
     //PossibleMoves
-    List<MoveElem> possibleMoves(Game g) {
+    List<MoveElem> possibleMoves(IGame g) {
         List<MoveElem> movePositions = new ArrayList<>();
-        for(Checker c: g.checkersList) {
+        for(Checker c: g.getPlayingfield()) {
             if(this.canReach(c, g)) {
                 if(c.alive && (player == Player.ONE ? c.y - this.y > 1 : c.y - this.y < -1)) continue; //If target is enemy piece and is not in attack range
                 if(c.alive && c.player != player) { //Check if attack is possible, if not, skip
-                    Game copy = Game.of(g.checkersList);
+                    Game copy = Game.of(g.getPlayingfield());
                     if(copy.attack(this, c, this.retrieveMoveTo(c)).equals(copy)) continue;
                 }
 
