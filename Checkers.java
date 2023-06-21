@@ -21,8 +21,8 @@ public class Checkers extends PApplet {
     int playerOneColor = color(138, 35, 12);
     int playerTwoColor = color(245, 233, 220);
     IGame game;
-    Checker fromChecker = null;
-    List<MoveElem> possibleMovesFromChecker = new ArrayList<>();
+    Checker selectedChecker = null;
+    List<MoveElem> possibleMovesSelectedChecker = new ArrayList<>();
     RevertMoveButton revertMoveButton;
 
     
@@ -54,11 +54,14 @@ public class Checkers extends PApplet {
 
         for(Checker c: game.getPlayingfield()) {
             if(c.isClicked(mouseX, mouseY, 100, playingFieldOffsetX, playingFieldOffsetY)) {
-                if(fromChecker == null) fromChecker = c;
+                if(selectedChecker == null) selectedChecker = c;
                 else {
-                    history.add(game);
-                    game = game.move(fromChecker.pos, c.pos);
-                    fromChecker = null;
+                    Game newGame = game.move(selectedChecker.pos, c.pos);
+                    if(!newGame.equals(game)) {
+                        history.add(game);
+                        game = newGame;
+                    }
+                    selectedChecker = null;
                 }
             }
         }
@@ -66,13 +69,12 @@ public class Checkers extends PApplet {
     }
 
     public void draw() {
-        if(fromChecker != null) {
-            possibleMovesFromChecker = fromChecker.possibleMoves(game);
+        //Get possible moves for selected Piece
+        if(selectedChecker != null) {
+            possibleMovesSelectedChecker = selectedChecker.possibleMoves(game);
         } else {
-            possibleMovesFromChecker = new ArrayList<>();
+            possibleMovesSelectedChecker = new ArrayList<>();
         }
-
-        System.out.println(game.getPlayer());
 
         strokeWeight(4);
 
@@ -95,9 +97,9 @@ public class Checkers extends PApplet {
             boolean isPossibleMove = false;
             int skipFieldOffsetX = (c.x + c.y % 2) * 100;
             int strokeColor = color(46, 46, 46);
-            if(c.equals(fromChecker)) strokeColor = color(255, 0, 0);
+            if(c.equals(selectedChecker)) strokeColor = color(255, 0, 0);
 
-            for(MoveElem m : possibleMovesFromChecker) {
+            for(MoveElem m : possibleMovesSelectedChecker) {
                 if(m.to == c.pos) {
                     isPossibleMove = true;
                     strokeColor = color(31, 218, 255);
@@ -150,7 +152,6 @@ class RevertMoveButton {
         g.text("Revert Move", x, y + 35);
     }
 }
-
 
 
 
@@ -215,6 +216,7 @@ interface IGame {
     public List<Checker> getPlayingfield();
     public int pieceAmountOfPlayer(Player player);
     public Player getPlayer();
+    public Checker findPiece(int x, int y); //Needs to be visible for Dame movement check
     default public boolean isGameOver() {
         int pieceAmount1= pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
         int pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
@@ -232,7 +234,7 @@ interface IGame {
 
 class Game implements IGame {
     List<Checker> checkersList = new ArrayList<>();
-    Player player = Player.ONE; //TODO: Fix bug where an attack to the last place (becoming a dame) doesnt make dame piece when this is set to Player two
+    Player player = Player.TWO;
     int boardSize = 32;
 
     static Game of(List<Checker> checkersList) {
@@ -311,13 +313,12 @@ class Game implements IGame {
             if(!movePiece.alive && movePiece.player == Player.NONE) {
                 copy.checkersList.set(movePiece.pos, movePiece.asDame(piece));
                 kill(piece, copy);
-                copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
+                copy.player = this.player == Player.TWO ? Player.ONE : Player.TWO;
                 return copy;
             }
         }
         //regular move without attacking etc.
         if(move == Move.BACKLEFT || move == Move.BACKRIGHT) return this; //throw new IllegalArgumentException("Cant move Backwards");
-        
         if((player == Player.ONE && movePiece.pos >= 28) || (player == Player.TWO && movePiece.pos <= 3)) {
             copy.checkersList.set(movePiece.pos, movePiece.asDame(piece)); //If at the end of the board, piece becomes a Dame
         } else {
@@ -325,7 +326,7 @@ class Game implements IGame {
         }
 
         kill(piece, copy);
-        copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
+        copy.player = this.player == Player.TWO ? Player.ONE : Player.TWO;
 
         return copy;
     }
@@ -339,8 +340,8 @@ class Game implements IGame {
         Checker landingChecker = findPiece(piece.pos + (movementDirection * moveAttackValue));
         if(((landingChecker.pos / 4) % 2) != ((piece.pos / 4) % 2)) return this; //throw new IllegalArgumentException("Piece cant land behind attacked piece");
         if(landingChecker.player != Player.NONE) return this;
-        if((player == Player.ONE && landingChecker.pos >= 28) || (player == Player.TWO && landingChecker.pos <= 3) || (piece.getClass() == Dame.class)) {
-            System.out.println("Here3");
+
+        if((piece.player == Player.ONE && landingChecker.pos >= 28) || (piece.player == Player.TWO && landingChecker.pos <= 3) || (piece.getClass() == Dame.class)) {
             checkersList.set(landingChecker.pos, landingChecker.asDame(piece)); //If at the end of the game, piece becomes a Dame
         } else {
             landingChecker.become(piece);
@@ -357,7 +358,7 @@ class Game implements IGame {
         g.checkersList.set(c.pos, d);
     }
 
-    Checker findPiece(int x, int y) {
+    public Checker findPiece(int x, int y) {
         assert x >= 0 && x < 4 && y >= 0 && y < 8;
         Optional<Checker> pieceOptional = checkersList.stream().filter(c -> c.x == x && c.y == y).findFirst();
         if(!pieceOptional.isPresent()) throw new IllegalArgumentException("No piece found " + x + " " + y);
@@ -617,11 +618,13 @@ class Dame extends Checker {
         super(player, x, y, pos);
     }
 
+    @Override
     public Dame clone() {
         return new Dame(this.player, this.x, this.y, this.pos);
     }
 
     //PossibleMoves
+    @Override
     List<MoveElem> possibleMoves(IGame g) {
         List<MoveElem> movePositions = new ArrayList<>();
         for(Checker c: g.getPlayingfield()) {
@@ -639,9 +642,10 @@ class Dame extends Checker {
     }
     
     //checks if there is a piece in the way from the current one to the target
-    //TODO: Doesnt work for move that goes backwards multiple places
-    boolean canReach(Checker target, Game g) {
+    @Override
+    boolean canReach(Checker target, IGame g) {
         if(player == Player.NONE) return false; //empty field cant Move
+        if(target.player == player) return false; //cant move on team piece
         if(this.pos == target.pos) return false;
 
         int rowNum = getRowModulo();
