@@ -20,10 +20,12 @@ public class Checkers extends PApplet {
     int playingFieldOffsetY = (height - 800) / 2;
     int playerOneColor = color(138, 35, 12);
     int playerTwoColor = color(245, 233, 220);
+    boolean botPlayerActivated = false;
     IGame game;
     Checker selectedChecker = null;
     List<MoveElem> possibleMovesSelectedChecker = new ArrayList<>();
-    RevertMoveButton revertMoveButton;
+    Textbutton revertMoveButton;
+    Textbutton botPlayerButton;
 
     
     public static void main(String[] args) {
@@ -40,7 +42,8 @@ public class Checkers extends PApplet {
         background(color(255, 255, 255));
         noStroke();
         game = new Game();
-        revertMoveButton = new RevertMoveButton(width - 275, height - 200);
+        revertMoveButton = new Textbutton(width - 275, height - 200, "Revert Move");
+        botPlayerButton = new Textbutton(width - 290, height - 400, "   Activate Bot", color(20, 220, 40), 190, 50);
         
     }
 
@@ -48,6 +51,17 @@ public class Checkers extends PApplet {
         if(revertMoveButton.isClicked(mouseX, mouseY)) {
             if(!history.empty()) {
                 game = history.pop();
+            }
+        }
+
+        if(botPlayerButton.isClicked(mouseX, mouseY)) {
+            botPlayerActivated = !botPlayerActivated;
+            if(botPlayerActivated) {
+                botPlayerButton.setColor(color(220, 10, 20));
+                botPlayerButton.setText("Deactivate Bot");
+            } else {
+                botPlayerButton.setColor(color(20, 220, 40));
+                botPlayerButton.setText("   Activate Bot");
             }
         }
 
@@ -75,6 +89,13 @@ public class Checkers extends PApplet {
         } else {
             possibleMovesSelectedChecker = new ArrayList<>();
         }
+
+
+        if(botPlayerActivated && game.getPlayer() == Player.ONE) {
+            MoveElem bestMove = game.bestMove();
+            game = game.move(bestMove.from, bestMove.to);
+        }
+
 
         strokeWeight(4);
 
@@ -125,18 +146,39 @@ public class Checkers extends PApplet {
         }
 
         revertMoveButton.draw(super.g);
+        botPlayerButton.draw(super.g);
     }
 }
 
 
-class RevertMoveButton {
+class Textbutton {
     int x, y;
     int width = 155;
     int height = 50;
+    String text = "";
+    int color = -1;
 
-    RevertMoveButton(int x, int y) {
+    Textbutton(int x, int y, String text) {
         this.x = x;
         this.y = y;
+        this.text = text;
+    }
+
+    Textbutton(int x, int y, String text, int color, int width, int height) {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.color = color;
+        this.width = width;
+        this.height = height;
+    }
+
+    void setColor(int color) {
+        this.color = color;
+    }
+
+    void setText(String t) {
+        this.text = t;
     }
 
     boolean isClicked(int mouseX, int mouseY) {       
@@ -146,10 +188,10 @@ class RevertMoveButton {
     public void draw(PGraphics g) {
         g.noStroke();
         g.textSize(30);
-        g.fill(g.color(61, 175, 224));
+        g.fill(color == -1 ? g.color(61, 175, 224) : color);
         g.rect(x, y, width, height);
         g.fill(g.color(255, 255, 255));
-        g.text("Revert Move", x, y + 35);
+        g.text(text, x, y + 35);
     }
 }
 
@@ -217,6 +259,7 @@ interface IGame {
     public int pieceAmountOfPlayer(Player player);
     public Player getPlayer();
     public Checker findPiece(int x, int y); //Needs to be visible for Dame movement check
+    public MoveElem bestMove();
     default public boolean isGameOver() {
         int pieceAmount1= pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
         int pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
@@ -236,6 +279,7 @@ class Game implements IGame {
     List<Checker> checkersList = new ArrayList<>();
     Player player = Player.TWO;
     int boardSize = 32;
+    Checker previousMoveChecker = null; //This is the checker that must be used after attacking
 
     static Game of(List<Checker> checkersList) {
         return new Game(checkersList);
@@ -281,6 +325,11 @@ class Game implements IGame {
 
         int offset = movePiece.pos - piece.pos;
         Move move = piece.retrieveMoveTo(movePiece);
+
+        //TODO: Hier folgemove prüfen
+        if(previousMoveChecker != null) {
+            if (!piece.equals(previousMoveChecker)) return this; //Following move must be with same checker
+        }
 
         //Attack logic that works for normal and Dame piece
         //////////////////////
@@ -386,16 +435,21 @@ class Game implements IGame {
         return moves;
     }
 
-    MoveElem bestMove() {
+
+    //TODO: Bestmove ist nicht immer der beste move
+    //bot spielt manchmal keinen move aber das spiel geht doch weiter
+    //PossibleMoves methode von Checker prüfen
+    //TODO: Zweiter zug muss folgezug sein
+    public MoveElem bestMove() {
         assert !this.isGameOver();
 
         int bestValue = Integer.MIN_VALUE;
         MoveElem bestMove = null;
         List<MoveElem> possibleMoves = this.getPossibleMoves();
-
+        System.out.println(possibleMoves);
         for(MoveElem m: possibleMoves) {
             Game nextGame = this.move(m.from, m.to);
-            int moveValue = miniMax(nextGame, false, 3);
+            int moveValue = miniMax(nextGame, false, 4);
 
             if(moveValue > bestValue) {
                 bestValue = moveValue;
@@ -429,7 +483,6 @@ class Game implements IGame {
             else if(!isMaximizingPlayer) return Integer.MAX_VALUE;
             else return 0;
         }
-
 
         int maximizingPlayerCount = isMaximizingPlayer ? g.pieceAmountOfPlayer(g.player) : g.pieceAmountOfPlayer(g.player == Player.ONE ? Player.TWO : Player.ONE);
         int minimizingPlayerCount = !isMaximizingPlayer ? g.pieceAmountOfPlayer(g.player) : g.pieceAmountOfPlayer(g.player == Player.ONE ? Player.TWO : Player.ONE);
@@ -532,7 +585,7 @@ class Checker {
 
             Game copy = g.move(pos, pos + moveValue);
         
-            if(!copy.equals(g) && pos + moveValue > 0 && pos + moveValue < 32) {
+            if((!copy.equals(g)) && (pos + moveValue >= 0) && (pos + moveValue < 32)) {
                 movePositions.add(new MoveElem(pos, pos + moveValue));
             }
         }
@@ -627,6 +680,7 @@ class Dame extends Checker {
     @Override
     List<MoveElem> possibleMoves(IGame g) {
         List<MoveElem> movePositions = new ArrayList<>();
+        if(this.player != g.getPlayer()) return movePositions; 
         for(Checker c: g.getPlayingfield()) {
             if(this.canReach(c, g)) {
                 if(c.alive && (player == Player.ONE ? c.y - this.y > 1 : c.y - this.y < -1)) continue; //If target is enemy piece and is not in attack range
