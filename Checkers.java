@@ -327,9 +327,8 @@ class Game implements IGame {
         Move move = piece.retrieveMoveTo(movePiece);
 
         //TODO: Hier folgemove prüfen
-        if(previousMoveChecker != null) {
-            if (!piece.equals(previousMoveChecker)) return this; //Following move must be with same checker
-        }
+        if(previousMoveChecker != null && !piece.equals(previousMoveChecker)) return this; //Following move must be with same checker
+        
 
         //Attack logic that works for normal and Dame piece
         //////////////////////
@@ -363,6 +362,7 @@ class Game implements IGame {
                 copy.checkersList.set(movePiece.pos, movePiece.asDame(piece));
                 kill(piece, copy);
                 copy.player = this.player == Player.TWO ? Player.ONE : Player.TWO;
+                copy.previousMoveChecker = null;
                 return copy;
             }
         }
@@ -375,6 +375,7 @@ class Game implements IGame {
         }
 
         kill(piece, copy);
+        copy.previousMoveChecker = null;
         copy.player = this.player == Player.TWO ? Player.ONE : Player.TWO;
 
         return copy;
@@ -396,6 +397,7 @@ class Game implements IGame {
             landingChecker.become(piece);
         }
         this.player = piece.player;
+        this.previousMoveChecker = landingChecker;
         kill(target, this);
         kill(piece, this);
         return this;
