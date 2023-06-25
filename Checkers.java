@@ -340,6 +340,7 @@ class Game implements IGame {
         return copy;
     }
 
+    //TODO Dame kann nach attack normal laufen (Kein attack)
     public Game move(int piecePos, int movePos) {
         assert !isGameOver() : "Game is over";
         if(movePos > 31 || movePos < 0) return this; //throw new IllegalArgumentException("Player cant move outside of playing field vertically");
