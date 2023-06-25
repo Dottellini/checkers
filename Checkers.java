@@ -26,6 +26,7 @@ public class Checkers extends PApplet {
     List<MoveElem> possibleMovesSelectedChecker = new ArrayList<>();
     Textbutton revertMoveButton;
     Textbutton botPlayerButton;
+    Textbutton newGameButton;
 
     
     public static void main(String[] args) {
@@ -44,6 +45,7 @@ public class Checkers extends PApplet {
         game = new Game();
         revertMoveButton = new Textbutton(width - 275, height - 200, "Revert Move");
         botPlayerButton = new Textbutton(width - 290, height - 400, "   Activate Bot", color(20, 220, 40), 190, 50);
+        newGameButton = new Textbutton(width - 275, height - 700, "New Game", color(207, 128, 33), 140, 50);
         
     }
 
@@ -63,6 +65,11 @@ public class Checkers extends PApplet {
                 botPlayerButton.setColor(color(20, 220, 40));
                 botPlayerButton.setText("   Activate Bot");
             }
+        }
+
+        if(newGameButton.isClicked(mouseX, mouseY)) {
+            game = new Game();
+            history.clear();
         }
 
 
@@ -92,11 +99,19 @@ public class Checkers extends PApplet {
 
         if(botPlayerActivated && game.getPlayer() == Player.ONE) {
             MoveElem bestMove = game.bestMove();
+            System.out.println(bestMove);
             game = game.move(bestMove.from, bestMove.to);
         }
 
         if(game.getPossibleMoves().size() == 0 && !game.isGameOver()){
             game = game.changePlayer();
+        }
+
+        if(game.isGameOver()) {
+            fill(color(0, 0, 0));
+            textSize(20);
+            text((game.isWinning() == Player.ONE ? "Red" : "White") + " won!", width - 275, height - 720);
+            newGameButton.draw(super.g);
         }
 
 
@@ -289,16 +304,17 @@ class Game implements IGame {
     Checker previousMoveChecker = null; //This is the checker that must be used after attacking
     boolean isConsecutiveAttack = false;
 
-    static Game of(List<Checker> checkersList) {
-        return new Game(checkersList);
+    static Game of(List<Checker> checkersList, Player player) {
+        return new Game(checkersList, player);
     }
 
-    private Game(List<Checker> checkersList) {
+    private Game(List<Checker> checkersList, Player player) {
         List<Checker> copyList = new ArrayList<>();
         for(Checker c: checkersList) {
             copyList.add(c.clone());
         }
         this.checkersList = copyList;
+        this.player = player;
     }
 
     Game() {
@@ -319,7 +335,7 @@ class Game implements IGame {
     }
 
     public Game changePlayer() {
-        Game copy = Game.of(this.checkersList);
+        Game copy = Game.of(this.checkersList, this.player);
         copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
         return copy;
     }
@@ -328,7 +344,7 @@ class Game implements IGame {
         assert !isGameOver() : "Game is over";
         if(movePos > 31 || movePos < 0) return this; //throw new IllegalArgumentException("Player cant move outside of playing field vertically");
 
-        Game copy = Game.of(this.checkersList);
+        Game copy = Game.of(this.checkersList, this.player);
         Checker piece = copy.findPiece(piecePos);
         Checker movePiece = copy.findPiece(movePos);
 
@@ -340,15 +356,16 @@ class Game implements IGame {
         Move move = piece.retrieveMoveTo(movePiece);
 
 
-        //TODO: Hier folgemove prüfen
         if(previousMoveChecker != null && previousMoveChecker.player == this.player) { //If true, last move was an attack
             if(!piece.equals(previousMoveChecker)) return this; //If selected piece is not he previous, youre not allowed to move
             isConsecutiveAttack = true;
-            if(piece.possibleMoves(copy).size() == 0) {
-                copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
-                return copy;
-            }; //Piece cant make a move
+            System.out.println(piece.possibleMoves(copy));
         }
+
+        if(isConsecutiveAttack && piece.possibleMoves(copy).size() == 0) {
+            copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
+            return copy;
+        }; //Piece cant make a move
         
 
         //Attack logic that works for normal and Dame piece
@@ -464,14 +481,12 @@ class Game implements IGame {
     //TODO: Bestmove ist nicht immer der beste move
     //bot spielt manchmal keinen move aber das spiel geht doch weiter
     //PossibleMoves methode von Checker prüfen
-    //TODO: Zweiter zug muss folgezug sein
     public MoveElem bestMove() {
         assert !this.isGameOver();
 
         int bestValue = Integer.MIN_VALUE;
         MoveElem bestMove = null;
         List<MoveElem> possibleMoves = this.getPossibleMoves();
-        System.out.println(possibleMoves);
         for(MoveElem m: possibleMoves) {
             Game nextGame = this.move(m.from, m.to);
             int moveValue = miniMax(nextGame, false, 4);
@@ -602,18 +617,18 @@ class Checker {
     //Returns a List of possible Moves of this piece in Game g
     List<MoveElem> possibleMoves(IGame g) {
         List<MoveElem> movePositions = new ArrayList<>();
-        if(player == Player.NONE) return movePositions;
+        //if(player == Player.NONE) return movePositions;
         int rowNum = getRowModulo();
 
         for(Move m: Move.values()){
             int moveValue = 0;
             if(player == Player.ONE) {
                 if(m == Move.LEFT || m == Move.RIGHT) moveValue = m.value + rowNum;
-                if(m == Move.BACKLEFT || m == Move.BACKRIGHT) moveValue = m.value - (rowNum == 0 ? 1 : 0);
+                else if(m == Move.BACKLEFT || m == Move.BACKRIGHT) moveValue = m.value - (rowNum == 0 ? 1 : 0);
             }
-            if(player == Player.TWO) {
+            else if(player == Player.TWO) {
                 if(m == Move.LEFT || m == Move.RIGHT) moveValue = -m.value - (rowNum == 0 ? 1 : 0);
-                if(m == Move.BACKLEFT || m == Move.BACKRIGHT) moveValue = -m.value + rowNum;
+                else if(m == Move.BACKLEFT || m == Move.BACKRIGHT) moveValue = -m.value + rowNum;
             }
 
             Game copy = g.move(pos, pos + moveValue);
@@ -718,7 +733,7 @@ class Dame extends Checker {
             if(this.canReach(c, g)) {
                 if(c.alive && (player == Player.ONE ? c.y - this.y > 1 : c.y - this.y < -1)) continue; //If target is enemy piece and is not in attack range
                 if(c.alive && c.player != player) { //Check if attack is possible, if not, skip
-                    Game copy = Game.of(g.getPlayingfield());
+                    Game copy = Game.of(g.getPlayingfield(), g.getPlayer());
                     if(copy.attack(this, c, this.retrieveMoveTo(c)).equalsWithoutPlayer(copy)) continue;
                 }
 
