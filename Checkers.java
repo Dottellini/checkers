@@ -341,6 +341,7 @@ class Game implements IGame {
     }
 
     //TODO Dame kann nach attack normal laufen (Kein attack)
+    //TODO wenn keine angreifbaren fields nach attack in der nähe ist game
     public Game move(int piecePos, int movePos) {
         assert !isGameOver() : "Game is over";
         if(movePos > 31 || movePos < 0) return this; //throw new IllegalArgumentException("Player cant move outside of playing field vertically");
@@ -356,11 +357,9 @@ class Game implements IGame {
         int offset = movePiece.pos - piece.pos;
         Move move = piece.retrieveMoveTo(movePiece);
 
-
         if(previousMoveChecker != null && previousMoveChecker.player == this.player) { //If true, last move was an attack
             if(!piece.equals(previousMoveChecker)) return this; //If selected piece is not he previous, youre not allowed to move
             isConsecutiveAttack = true;
-            System.out.println(piece.possibleMoves(copy));
         }
 
         if(isConsecutiveAttack && piece.possibleMoves(copy).size() == 0) {
@@ -386,6 +385,7 @@ class Game implements IGame {
             Checker target = copy.findPiece(piece.pos + moveDirection * (move.attack - move.value) + offsetByRowNum);
             if(!piece.canReach(target, copy)) return this; //throw new IllegalArgumentException("Target cant be reached");
             if(target.alive && target.player != piece.player) {
+                copy.previousMoveChecker = movePiece;
                 return copy.attack(piece, target, move);
             }
         }
@@ -393,11 +393,13 @@ class Game implements IGame {
         if(!piece.canReach(movePiece, copy)) return this; //throw new IllegalArgumentException("Target cant be reached");
 
         if(movePiece.alive && movePiece.player != piece.player) {
+            copy.previousMoveChecker = movePiece;
             return copy.attack(piece, movePiece, move);
         }
         //////////////////////////
         if(isConsecutiveAttack) return this; //Cant make a regular move after consecutive Attack
-
+        
+        //Regular move Dame
         if(piece.getClass() == Dame.class) {
             if(!movePiece.alive && movePiece.player == Player.NONE) {
                 copy.checkersList.set(movePiece.pos, movePiece.asDame(piece));
@@ -407,6 +409,7 @@ class Game implements IGame {
                 return copy;
             }
         }
+
         //regular move without attacking etc.
         if(move == Move.BACKLEFT || move == Move.BACKRIGHT) return this; //throw new IllegalArgumentException("Cant move Backwards");
         if((player == Player.ONE && movePiece.pos >= 28) || (player == Player.TWO && movePiece.pos <= 3)) {
@@ -478,19 +481,25 @@ class Game implements IGame {
         return moves;
     }
 
+    MoveElem randomMove() {
+        List<MoveElem> possibleMoves = this.getPossibleMoves();
+        Random r = new Random();
+        return possibleMoves.get(r.nextInt(possibleMoves.size()));
+
+    }
+
 
     //TODO: Bestmove ist nicht immer der beste move
     //bot spielt manchmal keinen move aber das spiel geht doch weiter
-    //PossibleMoves methode von Checker prüfen
     public MoveElem bestMove() {
         assert !this.isGameOver();
 
         int bestValue = Integer.MIN_VALUE;
-        MoveElem bestMove = null;
+        MoveElem bestMove = randomMove();
         List<MoveElem> possibleMoves = this.getPossibleMoves();
         for(MoveElem m: possibleMoves) {
             Game nextGame = this.move(m.from, m.to);
-            int moveValue = miniMax(nextGame, false, 4);
+            int moveValue = miniMax(nextGame, false, 4, Integer.MIN_VALUE, Integer.MAX_VALUE);
 
             if(moveValue > bestValue) {
                 bestValue = moveValue;
@@ -501,7 +510,7 @@ class Game implements IGame {
         return bestMove;
     }
 
-    private int miniMax(Game g, boolean isMaximizingPlayer, int depth) {
+    private int miniMax(Game g, boolean isMaximizingPlayer, int depth, int alpha, int beta) {
         if(g.isGameOver() || depth == 0) {
             return evaluate(g, isMaximizingPlayer);
         }
@@ -511,8 +520,11 @@ class Game implements IGame {
         
         for(MoveElem m: possibleMoves) {
             Game nextGame = g.move(m.from, m.to);
-            int childValue = miniMax(nextGame, !isMaximizingPlayer, depth - 1);
+            int childValue = miniMax(nextGame, !isMaximizingPlayer, depth - 1, alpha, beta);
+            alpha = isMaximizingPlayer ? Math.max(alpha, childValue) : alpha;
+            beta = !isMaximizingPlayer ? Math.min(beta, childValue) : beta;
             bestValue = isMaximizingPlayer ? Math.max(bestValue, childValue) : Math.min(bestValue, childValue);
+            if(beta <= alpha) break;
         }
 
         return bestValue;
