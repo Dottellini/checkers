@@ -97,6 +97,8 @@ public class Checkers extends PApplet {
             possibleMovesSelectedChecker = new ArrayList<>();
         }
 
+        System.out.println(possibleMovesSelectedChecker);
+
         if(botPlayerActivated && game.getPlayer() == Player.ONE) {
             MoveElem bestMove = game.bestMove();
             System.out.println(bestMove);
@@ -113,8 +115,6 @@ public class Checkers extends PApplet {
             text((game.isWinning() == Player.ONE ? "Red" : "White") + " won!", width - 275, height - 720);
             newGameButton.draw(super.g);
         }
-
-
 
 
         strokeWeight(4);
@@ -340,8 +340,8 @@ class Game implements IGame {
         return copy;
     }
 
-    //TODO Dame kann nach attack normal laufen (Kein attack)
-    //TODO wenn keine angreifbaren fields nach attack in der nähe ist game
+    //TODO Dame moveAnzeige zeigt noch moves an, obwohl sie nicht moven kann nach attack
+    //Das liegt an dames possibleMoves(), da diese nicht durch die move() methode prüft, ob ein move machbar ist
     public Game move(int piecePos, int movePos) {
         assert !isGameOver() : "Game is over";
         if(movePos > 31 || movePos < 0) return this; //throw new IllegalArgumentException("Player cant move outside of playing field vertically");
@@ -357,6 +357,7 @@ class Game implements IGame {
         int offset = movePiece.pos - piece.pos;
         Move move = piece.retrieveMoveTo(movePiece);
 
+        //Dame wont make this if statementbecause of player of previousMovechecker
         if(previousMoveChecker != null && previousMoveChecker.player == this.player) { //If true, last move was an attack
             if(!piece.equals(previousMoveChecker)) return this; //If selected piece is not he previous, youre not allowed to move
             isConsecutiveAttack = true;
@@ -366,7 +367,6 @@ class Game implements IGame {
             copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
             return copy;
         }; //Piece cant make a move
-        
 
         //Attack logic that works for normal and Dame piece
         //////////////////////
@@ -385,7 +385,7 @@ class Game implements IGame {
             Checker target = copy.findPiece(piece.pos + moveDirection * (move.attack - move.value) + offsetByRowNum);
             if(!piece.canReach(target, copy)) return this; //throw new IllegalArgumentException("Target cant be reached");
             if(target.alive && target.player != piece.player) {
-                copy.previousMoveChecker = movePiece;
+                //copy.previousMoveChecker = movePiece; //TODO
                 return copy.attack(piece, target, move);
             }
         }
@@ -393,7 +393,7 @@ class Game implements IGame {
         if(!piece.canReach(movePiece, copy)) return this; //throw new IllegalArgumentException("Target cant be reached");
 
         if(movePiece.alive && movePiece.player != piece.player) {
-            copy.previousMoveChecker = movePiece;
+            //copy.previousMoveChecker = movePiece; //TODO REMOVE
             return copy.attack(piece, movePiece, move);
         }
         //////////////////////////
@@ -437,6 +437,7 @@ class Game implements IGame {
 
         if((piece.player == Player.ONE && landingChecker.pos >= 28) || (piece.player == Player.TWO && landingChecker.pos <= 3) || (piece.getClass() == Dame.class)) {
             checkersList.set(landingChecker.pos, landingChecker.asDame(piece)); //If at the end of the game, piece becomes a Dame
+            landingChecker = checkersList.get(landingChecker.pos);
         } else {
             landingChecker.become(piece);
         }
