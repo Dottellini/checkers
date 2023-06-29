@@ -70,6 +70,7 @@ public class Checkers extends PApplet {
         if(newGameButton.isClicked(mouseX, mouseY)) {
             game = new Game();
             history.clear();
+            selectedChecker = null;
         }
 
 
@@ -97,11 +98,9 @@ public class Checkers extends PApplet {
             possibleMovesSelectedChecker = new ArrayList<>();
         }
 
-        System.out.println(possibleMovesSelectedChecker);
 
         if(botPlayerActivated && game.getPlayer() == Player.ONE) {
             MoveElem bestMove = game.bestMove();
-            System.out.println(bestMove);
             game = game.move(bestMove.from, bestMove.to);
         }
 
@@ -134,6 +133,13 @@ public class Checkers extends PApplet {
         }
 
         //Draw the Checkerpieces
+
+        //Following vars are needed to exterminate wrong Dame move prediction when last move was an attack
+        Checker lastGameMoveChecker = null;
+        List<MoveElem> dameMoves = new ArrayList<>();
+        boolean lastMoveWasDame = false;
+        if(game != null) lastGameMoveChecker = game.getPreviousChecker();
+
         for(Checker c: game.getPlayingfield()) {
             boolean isPossibleMove = false;
             int skipFieldOffsetX = (c.x + c.y % 2) * 100;
@@ -142,8 +148,20 @@ public class Checkers extends PApplet {
 
             for(MoveElem m : possibleMovesSelectedChecker) {
                 if(m.to == c.pos) {
-                    isPossibleMove = true;
-                    strokeColor = color(31, 218, 255);
+                    //Since Dame move Calculation doesnt use move() method, we need to manually check if move is possible
+                    //Move should not be possible if its a normal move after an attack
+                    if(lastGameMoveChecker != null && lastGameMoveChecker.getClass() == Dame.class) {
+                        lastMoveWasDame = true;
+                        if(c.player != Player.NONE) {
+                            dameMoves.add(m);
+                            isPossibleMove = true;
+                            strokeColor = color(31, 218, 255);
+                        }
+                    } else {
+                        //Here we color possible moves for selected Checker
+                        isPossibleMove = true;
+                        strokeColor = color(31, 218, 255);
+                    }
                 }
             }
             
@@ -163,6 +181,10 @@ public class Checkers extends PApplet {
                 }
                 circle(playingFieldOffsetX + playingFieldX * (c.x) + 50 + skipFieldOffsetX, playingFieldOffsetY + playingFieldY * c.y + 50, 75);
             }
+        }
+
+        if(dameMoves.isEmpty() && lastMoveWasDame) {
+            game = game.changePlayer();
         }
 
         revertMoveButton.draw(super.g);
@@ -282,6 +304,7 @@ interface IGame {
     public Checker findPiece(int x, int y); //Needs to be visible for Dame movement check
     public MoveElem bestMove();
     public List<MoveElem> getPossibleMoves();
+    public Checker getPreviousChecker();
     default public boolean isGameOver() {
         int pieceAmount1= pieceAmountOfPlayer(Player.ONE); //Pieces of player 1
         int pieceAmount2 = pieceAmountOfPlayer(Player.TWO); //Pieces of player 2
@@ -334,14 +357,16 @@ class Game implements IGame {
         return this.checkersList;
     }
 
+    public Checker getPreviousChecker() {
+        return previousMoveChecker;
+    }
+
     public Game changePlayer() {
         Game copy = Game.of(this.checkersList, this.player);
         copy.player = this.player == Player.ONE ? Player.TWO : Player.ONE;
         return copy;
     }
 
-    //TODO Dame moveAnzeige zeigt noch moves an, obwohl sie nicht moven kann nach attack
-    //Das liegt an dames possibleMoves(), da diese nicht durch die move() methode prüft, ob ein move machbar ist
     public Game move(int piecePos, int movePos) {
         assert !isGameOver() : "Game is over";
         if(movePos > 31 || movePos < 0) return this; //throw new IllegalArgumentException("Player cant move outside of playing field vertically");
@@ -385,7 +410,6 @@ class Game implements IGame {
             Checker target = copy.findPiece(piece.pos + moveDirection * (move.attack - move.value) + offsetByRowNum);
             if(!piece.canReach(target, copy)) return this; //throw new IllegalArgumentException("Target cant be reached");
             if(target.alive && target.player != piece.player) {
-                //copy.previousMoveChecker = movePiece; //TODO
                 return copy.attack(piece, target, move);
             }
         }
@@ -393,7 +417,6 @@ class Game implements IGame {
         if(!piece.canReach(movePiece, copy)) return this; //throw new IllegalArgumentException("Target cant be reached");
 
         if(movePiece.alive && movePiece.player != piece.player) {
-            //copy.previousMoveChecker = movePiece; //TODO REMOVE
             return copy.attack(piece, movePiece, move);
         }
         //////////////////////////
@@ -490,8 +513,6 @@ class Game implements IGame {
     }
 
 
-    //TODO: Bestmove ist nicht immer der beste move
-    //bot spielt manchmal keinen move aber das spiel geht doch weiter
     public MoveElem bestMove() {
         assert !this.isGameOver();
 
@@ -500,7 +521,7 @@ class Game implements IGame {
         List<MoveElem> possibleMoves = this.getPossibleMoves();
         for(MoveElem m: possibleMoves) {
             Game nextGame = this.move(m.from, m.to);
-            int moveValue = miniMax(nextGame, false, 4, Integer.MIN_VALUE, Integer.MAX_VALUE);
+            int moveValue = miniMax(nextGame, false, 5, Integer.MIN_VALUE, Integer.MAX_VALUE);
 
             if(moveValue > bestValue) {
                 bestValue = moveValue;
