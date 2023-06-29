@@ -108,6 +108,7 @@ public class Checkers extends PApplet {
             game = game.changePlayer();
         }
 
+        //Runs if the game is over
         if(game.isGameOver()) {
             fill(color(0, 0, 0));
             textSize(20);
@@ -183,6 +184,9 @@ public class Checkers extends PApplet {
             }
         }
 
+        //Change the player if the Dame that just moved doesnt have any more moves to do
+        //This is needed because dame possibleMoves dooesnt checkt with move()
+        //TODO: Change dame possibleMoves to use move()
         if(dameMoves.isEmpty() && lastMoveWasDame) {
             game = game.changePlayer();
         }
@@ -771,7 +775,11 @@ class Dame extends Checker {
                     Game copy = Game.of(g.getPlayingfield(), g.getPlayer());
                     if(copy.attack(this, c, this.retrieveMoveTo(c)).equalsWithoutPlayer(copy)) continue;
                 }
+                //Check if move is valid by using move()
+                Game copy = Game.of(g.getPlayingfield(), g.getPlayer());
+                if(copy.move(pos, c.pos).equals(g)) continue;
 
+                
                 movePositions.add(new MoveElem(pos, c.pos));
             }
         }
