@@ -101,7 +101,9 @@ public class Checkers extends PApplet {
 
         if(botPlayerActivated && game.getPlayer() == Player.ONE) {
             MoveElem bestMove = game.bestMove();
-            game = game.move(bestMove.from, bestMove.to);
+            if(bestMove != null) {
+                game = game.move(bestMove.from, bestMove.to);
+            }
         }
 
         if(game.getPossibleMoves().size() == 0 && !game.isGameOver()){
@@ -149,20 +151,8 @@ public class Checkers extends PApplet {
 
             for(MoveElem m : possibleMovesSelectedChecker) {
                 if(m.to == c.pos) {
-                    //Since Dame move Calculation doesnt use move() method, we need to manually check if move is possible
-                    //Move should not be possible if its a normal move after an attack
-                    if(lastGameMoveChecker != null && lastGameMoveChecker.getClass() == Dame.class) {
-                        lastMoveWasDame = true;
-                        if(c.player != Player.NONE) {
-                            dameMoves.add(m);
-                            isPossibleMove = true;
-                            strokeColor = color(31, 218, 255);
-                        }
-                    } else {
-                        //Here we color possible moves for selected Checker
-                        isPossibleMove = true;
-                        strokeColor = color(31, 218, 255);
-                    }
+                    isPossibleMove = true;
+                    strokeColor = color(31, 218, 255);
                 }
             }
             
@@ -182,13 +172,6 @@ public class Checkers extends PApplet {
                 }
                 circle(playingFieldOffsetX + playingFieldX * (c.x) + 50 + skipFieldOffsetX, playingFieldOffsetY + playingFieldY * c.y + 50, 75);
             }
-        }
-
-        //Change the player if the Dame that just moved doesnt have any more moves to do
-        //This is needed because dame possibleMoves dooesnt checkt with move()
-        //TODO: Change dame possibleMoves to use move()
-        if(dameMoves.isEmpty() && lastMoveWasDame) {
-            game = game.changePlayer();
         }
 
         revertMoveButton.draw(super.g);
@@ -513,7 +496,6 @@ class Game implements IGame {
         List<MoveElem> possibleMoves = this.getPossibleMoves();
         Random r = new Random();
         return possibleMoves.get(r.nextInt(possibleMoves.size()));
-
     }
 
 
@@ -521,7 +503,7 @@ class Game implements IGame {
         assert !this.isGameOver();
 
         int bestValue = Integer.MIN_VALUE;
-        MoveElem bestMove = randomMove();
+        MoveElem bestMove = this.getPossibleMoves().size() > 0 ? randomMove() : null;
         List<MoveElem> possibleMoves = this.getPossibleMoves();
         for(MoveElem m: possibleMoves) {
             Game nextGame = this.move(m.from, m.to);
@@ -777,6 +759,7 @@ class Dame extends Checker {
                 }
                 //Check if move is valid by using move()
                 Game copy = Game.of(g.getPlayingfield(), g.getPlayer());
+                copy.previousMoveChecker = g.getPreviousChecker();
                 if(copy.move(pos, c.pos).equals(g)) continue;
 
                 
