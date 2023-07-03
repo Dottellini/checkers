@@ -129,7 +129,7 @@ public class Checkers extends PApplet {
 
         fill(color(0, 0, 0));
         textSize(40);
-        text((game.getPlayer() == Player.ONE ? "Red's" : "White's") + " turn!", width - 275, height - 800);
+        text((game.getPlayer() == Player.ONE ? "Red's" : "White's") + " turn!", width - width/2 - 95, height - height + 40);
 
 
         strokeWeight(4);
