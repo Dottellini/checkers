@@ -98,6 +98,8 @@ public class Checkers extends PApplet {
             possibleMovesSelectedChecker = new ArrayList<>();
         }
 
+        System.out.println(possibleMovesSelectedChecker);
+
 
         if(botPlayerActivated && game.getPlayer() == Player.ONE) {
             MoveElem bestMove = game.bestMove();
@@ -753,10 +755,6 @@ class Dame extends Checker {
         for(Checker c: g.getPlayingfield()) {
             if(this.canReach(c, g)) {
                 if(c.alive && (player == Player.ONE ? c.y - this.y > 1 : c.y - this.y < -1)) continue; //If target is enemy piece and is not in attack range
-                if(c.alive && c.player != player) { //Check if attack is possible, if not, skip
-                    Game copy = Game.of(g.getPlayingfield(), g.getPlayer());
-                    if(copy.attack(this, c, this.retrieveMoveTo(c)).equalsWithoutPlayer(copy)) continue;
-                }
                 //Check if move is valid by using move()
                 Game copy = Game.of(g.getPlayingfield(), g.getPlayer());
                 copy.previousMoveChecker = g.getPreviousChecker();
