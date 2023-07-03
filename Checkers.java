@@ -91,6 +91,7 @@ public class Checkers extends PApplet {
     }
 
     public void draw() {
+        background(255);
         //Get possible moves for selected Piece
         if(selectedChecker != null) {
             possibleMovesSelectedChecker = selectedChecker.possibleMoves(game);
@@ -98,13 +99,19 @@ public class Checkers extends PApplet {
             possibleMovesSelectedChecker = new ArrayList<>();
         }
 
-        System.out.println(possibleMovesSelectedChecker);
-
-
+        //Bot player
         if(botPlayerActivated && game.getPlayer() == Player.ONE) {
             MoveElem bestMove = game.bestMove();
+            Player player = game.getPlayer();
             if(bestMove != null) {
                 game = game.move(bestMove.from, bestMove.to);
+            }
+            if(game.getPlayer() == player) { //Add a little delay to the bots moves (if he does multiple back to back) so you see each one better
+                try {
+                    Thread.sleep(500); 
+                } catch(InterruptedException err) {
+                    System.out.println(err);
+                }
             }
         }
 
@@ -119,6 +126,10 @@ public class Checkers extends PApplet {
             text((game.isWinning() == Player.ONE ? "Red" : "White") + " won!", width - 275, height - 720);
             newGameButton.draw(super.g);
         }
+
+        fill(color(0, 0, 0));
+        textSize(40);
+        text((game.getPlayer() == Player.ONE ? "Red's" : "White's") + " turn!", width - 275, height - 800);
 
 
         strokeWeight(4);
