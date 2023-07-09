@@ -20,7 +20,9 @@ public class Checkers extends PApplet {
     int playingFieldOffsetY = (height - 800) / 2;
     int playerOneColor = color(138, 35, 12);
     int playerTwoColor = color(245, 233, 220);
+    int backgroundColor = color(89, 81, 71);
     boolean botPlayerActivated = false;
+    int botStrength = 5; //This is the value for the minimax depth, higher value means better bot moves but also longer calculation times
     IGame game;
     Checker selectedChecker = null;
     List<MoveElem> possibleMovesSelectedChecker = new ArrayList<>();
@@ -40,7 +42,7 @@ public class Checkers extends PApplet {
     }
 
     public void setup() {
-        background(color(74, 67, 58));
+        background(backgroundColor);
         noStroke();
         game = new Game();
         revertMoveButton = new Textbutton(width - 275, height - 200, "Revert Move");
@@ -91,7 +93,7 @@ public class Checkers extends PApplet {
     }
 
     public void draw() {
-        background(255);
+        background(backgroundColor);
         //Get possible moves for selected Piece
         if(selectedChecker != null) {
             possibleMovesSelectedChecker = selectedChecker.possibleMoves(game);
@@ -101,7 +103,7 @@ public class Checkers extends PApplet {
 
         //Bot player
         if(botPlayerActivated && game.getPlayer() == Player.ONE) {
-            MoveElem bestMove = game.bestMove();
+            MoveElem bestMove = game.bestMove(botStrength);
             Player player = game.getPlayer();
             if(bestMove != null) {
                 game = game.move(bestMove.from, bestMove.to);
@@ -127,7 +129,7 @@ public class Checkers extends PApplet {
             newGameButton.draw(super.g);
         }
 
-        fill(color(0, 0, 0));
+        fill(color(255, 255, 255));
         textSize(40);
         text((game.getPlayer() == Player.ONE ? "Red's" : "White's") + " turn!", width - width/2 - 95, height - height + 40);
 
@@ -302,7 +304,7 @@ interface IGame {
     public Player getPlayer();
     public Game changePlayer();
     public Checker findPiece(int x, int y); //Needs to be visible for Dame movement check
-    public MoveElem bestMove();
+    public MoveElem bestMove(int depth);
     public List<MoveElem> getPossibleMoves();
     public Checker getPreviousChecker();
     default public boolean isGameOver() {
@@ -512,7 +514,7 @@ class Game implements IGame {
     }
 
 
-    public MoveElem bestMove() {
+    public MoveElem bestMove(int depth) {
         assert !this.isGameOver();
 
         int bestValue = Integer.MIN_VALUE;
@@ -520,7 +522,7 @@ class Game implements IGame {
         List<MoveElem> possibleMoves = this.getPossibleMoves();
         for(MoveElem m: possibleMoves) {
             Game nextGame = this.move(m.from, m.to);
-            int moveValue = miniMax(nextGame, false, 5, Integer.MIN_VALUE, Integer.MAX_VALUE);
+            int moveValue = miniMax(nextGame, false, depth, Integer.MIN_VALUE, Integer.MAX_VALUE);
 
             if(moveValue > bestValue) {
                 bestValue = moveValue;
@@ -557,11 +559,9 @@ class Game implements IGame {
             else if(!isMaximizingPlayer) return Integer.MAX_VALUE;
             else return 0;
         }
-
         int maximizingPlayerCount = isMaximizingPlayer ? g.pieceAmountOfPlayer(g.player) : g.pieceAmountOfPlayer(g.player == Player.ONE ? Player.TWO : Player.ONE);
         int minimizingPlayerCount = !isMaximizingPlayer ? g.pieceAmountOfPlayer(g.player) : g.pieceAmountOfPlayer(g.player == Player.ONE ? Player.TWO : Player.ONE);
         int eval = maximizingPlayerCount - minimizingPlayerCount;
-
 
         return isMaximizingPlayer ? eval : -eval;
     }
