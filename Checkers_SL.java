@@ -2,233 +2,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 
-import java.lang.reflect.WildcardType;
-import processing.core.PApplet;
-import processing.core.PGraphics;
-
-
-//PROCESSING Stuff
-public class Checkers extends PApplet {
-    Stack<IGame> history = new Stack<>();
-    static int width = 1600;
-    static int height = 900;
-    int playingFieldX = 100;
-    int playingFieldY = 100;
-    int whiteField = color(247, 216, 186);
-    int darkField = color(77, 66, 55);
-    int playingFieldOffsetX = (width - 800) / 2; //These are used to center the playingfield
-    int playingFieldOffsetY = (height - 800) / 2;
-    int playerOneColor = color(138, 35, 12);
-    int playerTwoColor = color(245, 233, 220);
-    boolean botPlayerActivated = false;
-    IGame game;
-    Checker selectedChecker = null;
-    List<MoveElem> possibleMovesSelectedChecker = new ArrayList<>();
-    Textbutton revertMoveButton;
-    Textbutton botPlayerButton;
-    Textbutton newGameButton;
-
-    
-    public static void main(String[] args) {
-        String[] appArgs = {"Dame"};
-		Checkers mySketch = new Checkers();
-		PApplet.runSketch(appArgs, mySketch);
-    }
-
-    public void settings() {
-        size(width, height);
-    }
-
-    public void setup() {
-        background(color(74, 67, 58));
-        noStroke();
-        game = new Game();
-        revertMoveButton = new Textbutton(width - 275, height - 200, "Revert Move");
-        botPlayerButton = new Textbutton(width - 290, height - 400, "   Activate Bot", color(109, 173, 110), 190, 50);
-        newGameButton = new Textbutton(width - 275, height - 700, "New Game", color(207, 128, 33), 140, 50);
-        
-    }
-
-    public void mousePressed() {
-        if(revertMoveButton.isClicked(mouseX, mouseY)) {
-            if(!history.empty()) {
-                game = history.pop();
-            }
-        }
-
-        if(botPlayerButton.isClicked(mouseX, mouseY)) {
-            botPlayerActivated = !botPlayerActivated;
-            if(botPlayerActivated) {
-                botPlayerButton.setColor(color(204, 100, 98));
-                botPlayerButton.setText("Deactivate Bot");
-            } else {
-                botPlayerButton.setColor(color(109, 173, 110));
-                botPlayerButton.setText("   Activate Bot");
-            }
-        }
-
-        if(newGameButton.isClicked(mouseX, mouseY)) {
-            game = new Game();
-            history.clear();
-            selectedChecker = null;
-        }
-
-
-        for(Checker c: game.getPlayingfield()) {
-            if(c.isClicked(mouseX, mouseY, 100, playingFieldOffsetX, playingFieldOffsetY)) {
-                if(selectedChecker == null) selectedChecker = c;
-                else {
-                    Game newGame = game.move(selectedChecker.pos, c.pos);
-                    if(!newGame.equals(game)) {
-                        history.add(game);
-                        game = newGame;
-                    }
-                    selectedChecker = null;
-                }
-            }
-        }
-        
-    }
-
-    public void draw() {
-        //Get possible moves for selected Piece
-        if(selectedChecker != null) {
-            possibleMovesSelectedChecker = selectedChecker.possibleMoves(game);
-        } else {
-            possibleMovesSelectedChecker = new ArrayList<>();
-        }
-
-
-        if(botPlayerActivated && game.getPlayer() == Player.ONE) {
-            MoveElem bestMove = game.bestMove();
-            if(bestMove != null) {
-                game = game.move(bestMove.from, bestMove.to);
-            }
-        }
-
-        if(game.getPossibleMoves().size() == 0 && !game.isGameOver()){
-            game = game.changePlayer();
-        }
-
-        //Runs if the game is over
-        if(game.isGameOver()) {
-            fill(color(255, 255, 255));
-            textSize(20);
-            text((game.isWinning() == Player.ONE ? "Red" : "White") + " won!", width - 275, height - 720);
-            newGameButton.draw(super.g);
-        }
-
-
-        strokeWeight(4);
-
-        //Draw the Playingfield
-        stroke(color(46, 46, 46));
-        for(int i = 0; i < 8; i++) {
-            for(int j = 0; j < 8; j++) {
-                if((i + j) % 2 == 0) {
-                    fill(whiteField);
-                    rect(playingFieldOffsetX + playingFieldX * j, playingFieldOffsetY + playingFieldY * i, 100, 100);
-                } else {
-                    fill(darkField);
-                    rect(playingFieldOffsetX + playingFieldX * j, playingFieldOffsetY + playingFieldY * i, 100, 100);
-                }
-            }
-        }
-
-        //Draw the Checkerpieces
-
-        //Following vars are needed to exterminate wrong Dame move prediction when last move was an attack
-        Checker lastGameMoveChecker = null;
-        List<MoveElem> dameMoves = new ArrayList<>();
-        boolean lastMoveWasDame = false;
-        if(game != null) lastGameMoveChecker = game.getPreviousChecker();
-
-        for(Checker c: game.getPlayingfield()) {
-            boolean isPossibleMove = false;
-            int skipFieldOffsetX = (c.x + c.y % 2) * 100;
-            int strokeColor = color(46, 46, 46);
-            if(c.equals(selectedChecker)) strokeColor = color(255, 0, 0);
-
-            for(MoveElem m : possibleMovesSelectedChecker) {
-                if(m.to == c.pos) {
-                    isPossibleMove = true;
-                    strokeColor = color(31, 218, 255);
-                }
-            }
-            
-            if(c.getClass() == Dame.class) { //Draw a dame piece
-                fill(c.player == Player.ONE ? playerOneColor : playerTwoColor);
-                stroke(strokeColor);
-                circle(playingFieldOffsetX + playingFieldX * (c.x) + 50 + skipFieldOffsetX, playingFieldOffsetY + playingFieldY * c.y + 50, 75);
-                circle(playingFieldOffsetX + playingFieldX * (c.x) + 50 + skipFieldOffsetX, playingFieldOffsetY + playingFieldY * c.y + 50, 40);
-            } else {
-                if(c.player == Player.NONE) { //Draw an empty space with stroke if it is a possible move
-                    noFill();
-                    if(isPossibleMove) stroke(strokeColor);
-                    else noStroke();
-                } else { //Draw a player piece
-                    fill(c.player == Player.ONE ? playerOneColor : playerTwoColor);
-                    stroke(strokeColor);
-                }
-                circle(playingFieldOffsetX + playingFieldX * (c.x) + 50 + skipFieldOffsetX, playingFieldOffsetY + playingFieldY * c.y + 50, 75);
-            }
-        }
-
-        revertMoveButton.draw(super.g);
-        botPlayerButton.draw(super.g);
-    }
-}
-
-
-class Textbutton {
-    int x, y;
-    int width = 155;
-    int height = 50;
-    String text = "";
-    int color = -1;
-
-    Textbutton(int x, int y, String text) {
-        this.x = x;
-        this.y = y;
-        this.text = text;
-    }
-
-    Textbutton(int x, int y, String text, int color, int width, int height) {
-        this.x = x;
-        this.y = y;
-        this.text = text;
-        this.color = color;
-        this.width = width;
-        this.height = height;
-    }
-
-    void setColor(int color) {
-        this.color = color;
-    }
-
-    void setText(String t) {
-        this.text = t;
-    }
-
-    boolean isClicked(int mouseX, int mouseY) {       
-        return mouseX >= x - width && mouseX <= x + width && mouseY >= y - height && mouseY <= y + height;
-    }
-
-    public void draw(PGraphics g) {
-        g.noStroke();
-        g.textSize(30);
-        g.fill(color == -1 ? g.color(61, 175, 224) : color);
-        g.rect(x, y, width, height);
-        g.fill(g.color(255, 255, 255));
-        g.text(text, x, y + 35);
-    }
-}
-
-
-
-// GAME LOGIC STARTS HERE
-
-
 enum Player {
     ONE(0),
     TWO(1),
@@ -586,8 +359,6 @@ class Game implements IGame {
             else s += pieces[c.player.value];
             if(c.y % 2 == 0) s+= " ■ ";
         }
-
-
         return s;
     }
 }
@@ -826,3 +597,66 @@ class Dame extends Checker {
         return true;
     }
 }
+
+
+
+
+//TESTING
+
+Game g = new Game();
+
+//Regular Move Player 1
+assert g.move(21, 17).move(10, 13).findPiece(13).player == Player.ONE && g.move(21, 17).move(10, 13).findPiece(10).player == Player.NONE : "Regular Move Player 1";
+//Regular Move Player 2
+assert g.move(21, 17).findPiece(17).player == Player.TWO && g.move(21, 17).findPiece(21).player == Player.NONE : "Regular Move Player 2";
+//Backwards Move
+assert g.move(21, 17).move(10, 13).move(17, 21).move(13, 10).equals(g.move(21, 17).move(10, 13).move(17, 21)) : "Backwards Move both Players";
+//Attack Player 1
+Game c = g.move(22, 18).move(10, 13).move(20, 16).move(13, 18);
+assert !c.findPiece(18).alive && c.findPiece(22).player == Player.ONE : "Attack Player 1";
+//Attack Player 2
+c = g.move(21, 17).move(10, 13).move(17, 13);
+assert !c.findPiece(13).alive && c.findPiece(10).player == Player.TWO : "Attack Player 2";
+//Jump Attack Player 1
+c = g.move(22, 18).move(10, 13).move(20, 16).move(13, 22);
+assert !c.findPiece(18).alive && c.findPiece(22).player == Player.ONE : "Jump Attack Player 1";
+//Jump Attack Player 2
+c = g.move(21, 17).move(10, 13).move(17, 10);
+assert !c.findPiece(13).alive && c.findPiece(10).player == Player.TWO : "Jump Attack Player 2";
+//Backwards Attack Player 1
+c = g.move(21, 18).move(10, 13).move(20, 16).move(13, 17).move(22, 19).move(17, 21).move(19, 15).move(21, 18);
+assert !c.findPiece(18).alive && c.findPiece(14).player == Player.ONE : "Backwards Attack Player 1";
+//Backwards Attack Player 2
+c = g.move(21, 18).move(10, 13).move(18, 14).move(9, 12).move(14, 10).move(12, 16).move(10, 13);
+assert !c.findPiece(13).alive && c.findPiece(17).player == Player.TWO : "Backwards Attack Player 2";
+//Backwards Jump Attack Player 1
+c = g.move(21, 18).move(10, 13).move(20, 16).move(13, 17).move(22, 19).move(17, 21).move(19, 15).move(21, 14);
+assert !c.findPiece(18).alive && c.findPiece(14).player == Player.ONE : "Backwards Jump Attack Player 1";
+//Backwards Jump Attack Player 2
+c = g.move(21, 18).move(10, 13).move(18, 14).move(9, 12).move(14, 10).move(12, 16).move(10, 17);
+assert !c.findPiece(13).alive && c.findPiece(17).player == Player.TWO : "Backwards Jump Attack Player 2";
+//Illegal move: Cant Reach
+assert g.move(21, 12).equals(g) : "Illegal move: Cant Reach";
+//Illegal move: No free space
+assert g.move(21, 25).equals(g) : "Illegal move: No free space";
+//Illegal move: Move outside horizontally
+assert g.move(20, 23).equals(g) : "Illegal move: Move outside horizontally";
+//Illegal move: Move outside vertically
+assert g.move(20, 17).move(1, -1).equals(g.move(20, 17)) : "Illegal move: Move outside vertically";
+assert g.move(30, 32).equals(g) : "Illegal move: Move outside vertically";
+//Check if creating Dame works
+for(int i = 0; i < g.boardSize; i++) {
+    Checker c = g.findPiece(i);
+    Checker dummy = new Checker(Player.NONE, c.x, c.y, c.pos);
+    dummy.alive = false;
+    g.checkersList.set(i, dummy);
+}
+g.checkersList.set(4, new Checker(Player.TWO, 0, 1, 4));
+g.checkersList.set(26, new Checker(Player.ONE, 2, 6, 26));
+
+Game d = g.move(4, 0);
+
+d = d.move(26, 30);
+assert d.checkersList.get(0).getClass() == Dame.class && d.checkersList.get(30).getClass() == Dame.class: "Check if creating Dame works";
+//Dame movement
+assert !d.equals(d.move(0, 9)): "Move dame multiple backright";
