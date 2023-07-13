@@ -29,6 +29,8 @@ public class Checkers extends PApplet {
     Textbutton revertMoveButton;
     Textbutton botPlayerButton;
     Textbutton newGameButton;
+    Textbutton diffUp;
+    Textbutton diffDown;
 
     
     public static void main(String[] args) {
@@ -48,6 +50,8 @@ public class Checkers extends PApplet {
         revertMoveButton = new Textbutton(width - 275, height - 200, "Revert Move");
         botPlayerButton = new Textbutton(width - 290, height - 400, "   Activate Bot", color(109, 173, 110), 190, 50);
         newGameButton = new Textbutton(width - 275, height - 700, "New Game", color(207, 128, 33), 140, 50);
+        diffUp = new Textbutton(width - 290, height - 350, " Up", color(237, 85, 85), 50, 50);
+        diffDown = new Textbutton(width - 180, height - 350, " Down", color(85, 237, 90), 80, 50);
         
     }
 
@@ -73,6 +77,18 @@ public class Checkers extends PApplet {
             game = new Game();
             history.clear();
             selectedChecker = null;
+        }
+
+        if(diffUp.isClicked(mouseX, mouseY)) {
+            if(this.botStrength < 9) {
+                this.botStrength++;
+            }
+        }
+
+        if(diffDown.isClicked(mouseX, mouseY)) {
+            if(this.botStrength > 1) {
+                this.botStrength--;
+            }
         }
 
 
@@ -124,7 +140,7 @@ public class Checkers extends PApplet {
         //Runs if the game is over
         if(game.isGameOver()) {
             fill(color(255, 255, 255));
-            textSize(20);
+            textSize(40);
             text((game.isWinning() == Player.ONE ? "Red" : "White") + " won!", width - 275, height - 720);
             newGameButton.draw(super.g);
         }
@@ -132,6 +148,7 @@ public class Checkers extends PApplet {
         fill(color(255, 255, 255));
         textSize(40);
         text((game.getPlayer() == Player.ONE ? "Red's" : "White's") + " turn!", width - width/2 - 95, height - height + 40);
+        text(this.botStrength, width - 220, height - 310);
 
 
         strokeWeight(4);
@@ -191,6 +208,8 @@ public class Checkers extends PApplet {
 
         revertMoveButton.draw(super.g);
         botPlayerButton.draw(super.g);
+        diffUp.draw(super.g);
+        diffDown.draw(super.g);
     }
 }
 
@@ -226,7 +245,7 @@ class Textbutton {
     }
 
     boolean isClicked(int mouseX, int mouseY) {       
-        return mouseX >= x - width && mouseX <= x + width && mouseY >= y - height && mouseY <= y + height;
+        return mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + height;
     }
 
     public void draw(PGraphics g) {
